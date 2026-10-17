@@ -1,4 +1,4 @@
-# Job Hunter v2: daily remote-job pipeline for Odysseus
+# Job Hunter: daily remote-job pipeline for Odysseus
 
 Every morning: pull fresh jobs from company boards, filter in code, let the LLM score
 only the survivors against your CV, and get the good ones on Telegram.
