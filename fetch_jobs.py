@@ -2,6 +2,8 @@
 """
 Stage 1 - fetch jobs from the public Greenhouse / Lever / Ashby APIs,
 apply hard filters, drop jobs already evaluated, write candidates.json.
+Sources: Greenhouse, Lever, Ashby, Recruitee, Workable, Personio (per company) and
+Remotive / RemoteOK / Arbeitnow (aggregators).
 
 Standard library only (no pip install needed).
 
@@ -18,6 +20,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+import xml.etree.ElementTree as ET
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 
@@ -29,22 +32,27 @@ UA = "Mozilla/5.0 (compatible; personal-job-hunter/1.0)"
 # --------------------------------------------------------------------------- #
 # HTTP + text helpers
 # --------------------------------------------------------------------------- #
-def http_get_json(url, retries=2, timeout=25):
-    """GET JSON. Returns None on 404 (bad company slug). Raises on other failures."""
+def http_get_text(url, accept="*/*", retries=2, timeout=25):
+    """GET text. Returns None on 404 (unknown company). Raises on other failures."""
     last = None
     for attempt in range(retries + 1):
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "application/json"})
+            req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": accept})
             with urllib.request.urlopen(req, timeout=timeout) as resp:
-                return json.loads(resp.read().decode("utf-8"))
+                return resp.read().decode("utf-8", "replace")
         except urllib.error.HTTPError as exc:
             if exc.code == 404:
                 return None
             last = exc
-        except Exception as exc:  # network errors, bad JSON, timeouts
+        except Exception as exc:  # network errors, timeouts
             last = exc
         time.sleep(1.5 * (attempt + 1))
     raise last
+
+
+def http_get_json(url, **kwargs):
+    text = http_get_text(url, accept="application/json", **kwargs)
+    return None if text is None else json.loads(text)
 
 
 def clean_html(raw):
@@ -59,12 +67,21 @@ def clean_html(raw):
 
 
 def parse_date(value):
+    """Handles ISO strings, '2026-07-27 14:23:51 UTC', '+0000' offsets, date-only values and epoch milliseconds."""
     if value in (None, ""):
         return None
     try:
         if isinstance(value, (int, float)):
             return datetime.fromtimestamp(value / 1000, tz=timezone.utc)
-        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        text = str(value).strip()
+        text = re.sub(r"\s*UTC$", "+00:00", text)
+        if text.endswith("Z"):
+            text = text[:-1] + "+00:00"
+        text = re.sub(r"([+-]\d{2})(\d{2})$", r"\1:\2", text)
+        frac = re.search(r"\.(\d+)", text)
+        if frac:  # older Pythons need exactly 3 or 6 fractional digits
+            text = text.replace(frac.group(0), "." + (frac.group(1) + "000000")[:6], 1)
+        parsed = datetime.fromisoformat(text)
         return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
     except (ValueError, OSError, OverflowError):
         return None
@@ -142,6 +159,115 @@ def fetch_ashby(slug):
             "remote_flag": True if remote else None,
             "posted": parse_date(j.get("publishedAt") or j.get("publishedDate")),
             "description": j.get("descriptionPlain") or clean_html(j.get("descriptionHtml", "")),
+        })
+    return jobs
+
+
+REMOTE_PHRASES = ("fully remote", "100% remote", "remote-first", "remote first", "work from anywhere",
+                  "work remotely", "remote position", "remote role")
+
+
+def looks_remote(location, title, description):
+    """For ATSs with no remote flag (Personio): remote in the office/title, or an explicit phrase near the top."""
+    if "remote" in f"{location} {title}".lower():
+        return True
+    head = description[:1500].lower()
+    return any(p in head for p in REMOTE_PHRASES)
+
+
+def fetch_recruitee(slug):
+    data = http_get_json(f"https://{slug}.recruitee.com/api/offers/")
+    if data is None:
+        return None
+    jobs = []
+    for j in data.get("offers", []):
+        location = j.get("location") or ", ".join(x for x in (j.get("city"), j.get("country")) if x)
+        description = "\n\n".join(x for x in (clean_html(j.get("description", "")),
+                                               clean_html(j.get("requirements", ""))) if x)
+        jobs.append({
+            "job_id": str(j.get("id") or j.get("guid") or j.get("slug") or ""),
+            "title": j.get("title", "") or "",
+            "company": j.get("company_name") or pretty_company(slug),
+            "url": j.get("careers_url") or j.get("url") or "",
+            "location": location or "",
+            "remote_flag": True if j.get("remote") else None,
+            "posted": parse_date(j.get("published_at") or j.get("created_at")),
+            "description": description,
+        })
+    return jobs
+
+
+def fetch_workable(slug):
+    data = http_get_json(f"https://apply.workable.com/api/v1/widget/accounts/{slug}?details=true")
+    if not isinstance(data, dict):
+        return None
+    company = data.get("name") or pretty_company(slug)
+    jobs = []
+    for j in data.get("jobs", []):
+        loc_obj = j.get("location") if isinstance(j.get("location"), dict) else {}
+        parts = [j.get("city") or loc_obj.get("city"), j.get("state") or loc_obj.get("region"),
+                 j.get("country") or loc_obj.get("country")]
+        location = ", ".join(p for p in parts if p)
+        if not location:  # fall back to the locations list
+            names = []
+            for loc in j.get("locations") or []:
+                if isinstance(loc, dict):
+                    names.append(", ".join(x for x in (loc.get("city"), loc.get("region"), loc.get("country")) if x))
+            location = " / ".join(n for n in names if n)
+        remote = bool(j.get("telecommuting")) or bool(loc_obj.get("telecommuting"))
+        jobs.append({
+            "job_id": str(j.get("shortcode") or j.get("id") or j.get("code") or ""),
+            "title": j.get("title", "") or "",
+            "company": company,
+            "url": j.get("url") or j.get("shortlink") or j.get("application_url") or "",
+            "location": location,
+            "remote_flag": True if remote else None,
+            "posted": parse_date(j.get("published_on") or j.get("created_at")),
+            "description": clean_html(j.get("description") or j.get("full_description") or ""),
+        })
+    return jobs
+
+
+def fetch_personio(slug):
+    text = base = None
+    for domain in ("de", "com"):  # a company's feed lives on one of the two domains
+        base = f"https://{slug}.jobs.personio.{domain}"
+        text = http_get_text(f"{base}/xml?language=en", accept="application/xml,text/xml,*/*")
+        if text:
+            break
+    if not text:
+        return None
+    try:
+        root = ET.fromstring(text)
+    except ET.ParseError as exc:
+        raise ValueError(f"feed is not valid XML ({exc})")
+    jobs = []
+    for p in root.iter("position"):
+        def field(tag):
+            return (p.findtext(tag) or "").strip()
+
+        offices = [field("office")] + [(o.text or "").strip() for o in p.findall("additionalOffices/office")]
+        location = ", ".join(dict.fromkeys(o for o in offices if o))
+        sections = []
+        for d in p.findall("jobDescriptions/jobDescription"):
+            name = (d.findtext("name") or "").strip()
+            value = clean_html(d.findtext("value") or "")
+            if value:
+                sections.append(f"{name}\n{value}" if name else value)
+        facts = [f"{label}: {field(tag)}" for label, tag in (("Seniority", "seniority"),
+                 ("Years of experience", "yearsOfExperience"), ("Employment", "employmentType"),
+                 ("Schedule", "schedule")) if field(tag)]
+        description = ("\n".join(facts) + "\n\n" if facts else "") + "\n\n".join(sections)
+        title = field("name")
+        jobs.append({
+            "job_id": field("id"),
+            "title": title,
+            "company": field("subcompany") or pretty_company(slug),
+            "url": f"{base}/job/{field('id')}" if field("id") else "",
+            "location": location,
+            "remote_flag": True if looks_remote(location, title, description) else None,
+            "posted": parse_date(field("createdAt")),
+            "description": description,
         })
     return jobs
 
@@ -228,6 +354,9 @@ FETCHERS = {
     "lever": lambda slug: fetch_lever(slug, eu=False),
     "lever_eu": lambda slug: fetch_lever(slug, eu=True),
     "ashby": fetch_ashby,
+    "recruitee": fetch_recruitee,
+    "workable": fetch_workable,
+    "personio": fetch_personio,
 }
 
 
@@ -240,6 +369,21 @@ def compile_keywords(words):
 
 def norm(text):
     return re.sub(r"[^a-z0-9]", "", (text or "").lower())
+
+
+def term_in(text, term):
+    """Whole-word match of `term` in `text` (both lowercase), so "usa" does not match "Lusaka",
+    "uk" does not match "Ukraine", "java" does not match "JavaScript"."""
+    t = term.strip().lower()
+    if not t:
+        return False
+    before = r"(?<!\w)" if t[0].isalnum() else ""
+    after = r"(?!\w)" if t[-1].isalnum() else ""
+    return re.search(before + re.escape(t) + after, text) is not None
+
+
+def title_excluded(title, terms):
+    return any(term_in(title, t) for t in terms)
 
 
 def company_matches(job, terms):
@@ -262,7 +406,7 @@ def reject_reason(job, f, patterns, now):
     # Priority companies skip only the stack-keyword minimum and the per-run cap.
     if not any(k in title for k in f["title_include"]):
         return "title_no_match"
-    if any(k in title for k in f["title_exclude"]):
+    if title_excluded(title, f["title_exclude"]):
         return "title_excluded"
 
     if f["require_remote"]:
@@ -272,8 +416,8 @@ def reject_reason(job, f, patterns, now):
         if not remote:
             return "not_remote"
 
-    excluded = any(t in loc for t in f["location_exclude_terms"])
-    allowed = any(t in loc for t in f["location_allow_terms"])
+    excluded = any(term_in(loc, t) for t in f["location_exclude_terms"])
+    allowed = any(term_in(loc, t) for t in f["location_allow_terms"])
     if excluded and not allowed:
         return "location_excluded"
 
@@ -314,7 +458,7 @@ def main():
     for source, slugs in cfg["companies"].items():
         fetcher = FETCHERS.get(source)
         if not fetcher:
-            errors.append(f"unknown source '{source}' in config.json (use greenhouse, lever, lever_eu, ashby)")
+            errors.append(f"unknown source '{source}' in config.json (use greenhouse, lever, lever_eu, ashby, recruitee, workable, personio)")
             continue
         plan.append((source, slugs, fetcher))
     for name, enabled in cfg.get("boards", {}).items():

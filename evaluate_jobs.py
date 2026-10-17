@@ -51,15 +51,15 @@ Otherwise hard_fail must be an empty string.
 # Step 2 - score 0-100
 Weights: core tech stack overlap with the CV (40), experience and seniority fit (20),
 role type and remote fit (20), nice-to-haves and soft skills (20).
-Be conservative; most postings should score below 75.
-90-100: nearly every requirement met and the level fits. 75-89: strong match, minor learnable gaps.
-50-74: partial match or a gap in a core requirement. Below 50: weak match.
+Be conservative; most postings should score below __T__.
+90-100: nearly every requirement met and the level fits. __T__-89: strong match, minor learnable gaps.
+50-__T1__: partial match or a gap in a core requirement. Below 50: weak match.
 
 # Rules
 - Evidence: list a strength only if the posting asks for it AND the CV shows it. Never invent skills,
   employers, years or numbers. Required technologies missing from the CV go under gaps.
 - strengths: 2-3 short items. gaps: short items, empty list if none.
-- pitch: ONE first-person sentence, max 40 words, using only facts from the CV. Leave it empty if score is below 75.
+- pitch: ONE first-person sentence, max 40 words, using only facts from the CV. Leave it empty if score is below __T__.
 - Plain text only: no HTML, no Markdown.
 
 # Candidate CV
@@ -307,7 +307,9 @@ def main():
     if "<FILL IN>" in prefs:
         print("WARNING: preferences.md still contains <FILL IN> placeholders; scoring will be less accurate.",
               file=sys.stderr)
-    system = SYSTEM_TEMPLATE.format(cv=cv, prefs=prefs)
+    threshold = max(50, min(89, int(cfg["score_threshold"])))
+    system = (SYSTEM_TEMPLATE.replace("__T1__", str(threshold - 1)).replace("__T__", str(threshold))
+              .format(cv=cv, prefs=prefs))
     if len(system) > llm["num_ctx"] * 3 - 4000:
         print("WARNING: CV + preferences are large for this num_ctx; raise llm.num_ctx in config.json.",
               file=sys.stderr)

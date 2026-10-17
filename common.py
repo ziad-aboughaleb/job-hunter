@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 
 DEFAULTS = {
-    "companies": {"greenhouse": [], "lever": [], "lever_eu": [], "ashby": []},
+    "companies": {"greenhouse": [], "lever": [], "lever_eu": [], "ashby": [], "recruitee": [], "workable": [], "personio": []},
     "boards": {"remotive": True, "remoteok": True, "arbeitnow": False},
     "filters": {
         "title_include": [
