@@ -460,7 +460,11 @@ def main():
         if not fetcher:
             errors.append(f"unknown source '{source}' in config.json (use greenhouse, lever, lever_eu, ashby, recruitee, workable, personio)")
             continue
-        plan.append((source, slugs, fetcher))
+        unique = {}
+        for name in slugs:  # drop duplicate names that differ only by case; the first spelling wins
+            if name.strip():
+                unique.setdefault(name.strip().lower(), name.strip())
+        plan.append((source, list(unique.values()), fetcher))
     for name, enabled in cfg.get("boards", {}).items():
         if not enabled or args.no_boards:
             continue

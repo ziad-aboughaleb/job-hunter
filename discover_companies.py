@@ -112,7 +112,7 @@ def main():
     print(f"{len(queries)} searches, roughly {len(queries) * (args.delay + 3) / 60:.0f} minute(s).\n")
 
     known = {p: {s.lower() for s in cfg["companies"].get(p, [])} for p in SITES}
-    found = {p: set() for p in SITES}
+    found = {p: {} for p in SITES}  # lowercase name -> first spelling seen, so Tempo/tempo count once
     ddgs = DDGS()
     errors_in_a_row = 0
 
@@ -131,11 +131,11 @@ def main():
             for r in results:
                 m = PATTERNS[platform].search(r.get("href", ""))
                 if m and m.group(1).lower() not in IGNORE:
-                    found[platform].add(m.group(1))
+                    found[platform].setdefault(m.group(1).lower(), m.group(1))
             print(f"[{i}/{len(queries)}] {query}  ->  {len(results)} results, {len(found[platform]) - before} new")
         time.sleep(args.delay)
 
-    new = {p: sorted(s for s in found[p] if s.lower() not in known[p]) for p in platforms}
+    new = {p: sorted(name for low, name in found[p].items() if low not in known[p]) for p in platforms}
     print("\nNew company names:")
     for p, slugs in new.items():
         print(f"  {p}: {slugs or '-'}")
