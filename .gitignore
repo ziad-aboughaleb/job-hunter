@@ -1,0 +1,8 @@
+.env
+__pycache__/
+candidates.json
+results.json
+run_status.json
+seen.json.bak
+*.tmp
+logs

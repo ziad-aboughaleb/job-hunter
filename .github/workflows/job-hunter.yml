@@ -1,0 +1,68 @@
+name: job-hunter
+
+on:
+  schedule:
+    # # Egypt is UTC+3 (EEST). Times are in UTC:
+    # - cron: "0 5 * * *" # 08:00 AM EEST (Morning full run)
+    # - cron: "0 10 * * *" # 01:00 PM EEST (Midday company-only)
+    # - cron: "0 15 * * *" # 06:00 PM EEST (Evening company-only)
+  workflow_dispatch: # lets you run it manually from the Actions tab
+    inputs:
+      no_boards:
+        description: "Skip aggregator boards: fetch listed companies only"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Dry run: print the Telegram cards in the log, send nothing, do not save seen.json"
+        type: boolean
+        default: false
+
+concurrency:
+  group: job-hunter
+  cancel-in-progress: false
+
+permissions:
+  contents: write # needed to commit seen.json back to the repo
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch jobs
+        run: |
+          # Check if triggered by scheduled 10:00 or 15:00 UTC cron, or if no_boards input is checked
+          if [ "${{ github.event.schedule }}" = "0 10 * * *" ] || [ "${{ github.event.schedule }}" = "0 15 * * *" ] || [ "${{ inputs.no_boards }}" = "true" ]; then
+            python fetch_jobs.py --no-boards
+          else
+            python fetch_jobs.py
+          fi
+
+      - name: Evaluate jobs
+        if: always()
+        run: python evaluate_jobs.py
+
+      - name: Send to Telegram
+        if: always()
+        run: python send_telegram.py ${{ inputs.dry_run && '--dry-run' || '' }}
+
+      - name: Save seen jobs
+        if: always() && !inputs.dry_run
+        run: |
+          git config user.name "job-hunter-bot"
+          git config user.email "job-hunter-bot@users.noreply.github.com"
+          if [ -f seen.json ]; then git add seen.json; fi
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update seen jobs"
+            git push
+          fi
