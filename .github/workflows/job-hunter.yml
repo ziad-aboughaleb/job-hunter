@@ -2,18 +2,18 @@ name: job-hunter
 
 on:
   schedule:
-    # # Egypt is UTC+3 (EEST). Times are in UTC:
-    # - cron: "0 5 * * *" # 08:00 AM EEST (Morning full run)
-    # - cron: "0 10 * * *" # 01:00 PM EEST (Midday company-only)
-    # - cron: "0 15 * * *" # 06:00 PM EEST (Evening company-only)
-  workflow_dispatch: # lets you run it manually from the Actions tab
+    # Egypt is UTC+3 (EEST). Times are in UTC:
+    - cron: "0 5 * * *" # 08:00 AM EEST (Morning full run)
+    - cron: "0 10 * * *" # 01:00 PM EEST (Midday company-only)
+    - cron: "0 15 * * *" # 06:00 PM EEST (Evening company-only)
+  workflow_dispatch: # lets you run it by hand from the Actions tab
     inputs:
       no_boards:
         description: "Skip aggregator boards: fetch listed companies only"
         type: boolean
         default: false
       dry_run:
-        description: "Dry run: print the Telegram cards in the log, send nothing, do not save seen.json"
+        description: "Dry run: print the Telegram messages in the log, send nothing, save nothing"
         type: boolean
         default: false
 
@@ -22,11 +22,11 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write # needed to commit seen.json back to the repo
+  contents: write # lets the last step commit data/seen.json
 
 jobs:
   run:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -39,29 +39,46 @@ jobs:
         with:
           python-version: "3.12"
 
+      # Personal files can live in repository secrets instead of the repo. That is the safe way to run a PUBLIC fork.
+      # Each secret is optional: if it is not set, the file from the repository is used.
+      - name: Write personal files from secrets
+        env:
+          CV_MD: ${{ secrets.CV_MD }}
+          PREFERENCES_MD: ${{ secrets.PREFERENCES_MD }}
+          CONFIG_JSON: ${{ secrets.CONFIG_JSON }}
+        run: |
+          if [ -n "$CV_MD" ]; then printf '%s\n' "$CV_MD" > cv.md; fi
+          if [ -n "$PREFERENCES_MD" ]; then printf '%s\n' "$PREFERENCES_MD" > preferences.md; fi
+          if [ -n "$CONFIG_JSON" ]; then printf '%s\n' "$CONFIG_JSON" > config.json; fi
+
+      - name: Check setup
+        run: python -m jobhunter doctor || true # informational: shows what is missing in the log
+
+      # Check if triggered by scheduled 10:00 or 15:00 UTC cron, or if no_boards input is checked
       - name: Fetch jobs
         run: |
-          # Check if triggered by scheduled 10:00 or 15:00 UTC cron, or if no_boards input is checked
           if [ "${{ github.event.schedule }}" = "0 10 * * *" ] || [ "${{ github.event.schedule }}" = "0 15 * * *" ] || [ "${{ inputs.no_boards }}" = "true" ]; then
-            python fetch_jobs.py --no-boards
+            python -m jobhunter fetch --no-boards
           else
-            python fetch_jobs.py
+            python -m jobhunter fetch
           fi
 
+      # if: always() on the next steps: an earlier failure must still reach the Telegram alert,
+      # and must not lose the progress already recorded in seen.json.
       - name: Evaluate jobs
         if: always()
-        run: python evaluate_jobs.py
+        run: python -m jobhunter evaluate
 
       - name: Send to Telegram
         if: always()
-        run: python send_telegram.py ${{ inputs.dry_run && '--dry-run' || '' }}
+        run: python -m jobhunter send ${{ inputs.dry_run && '--dry-run' || '' }}
 
       - name: Save seen jobs
         if: always() && !inputs.dry_run
         run: |
           git config user.name "job-hunter-bot"
           git config user.email "job-hunter-bot@users.noreply.github.com"
-          if [ -f seen.json ]; then git add seen.json; fi
+          if [ -f data/seen.json ]; then git add -f data/seen.json; fi
           if ! git diff --cached --quiet; then
             git commit -m "chore: update seen jobs"
             git push

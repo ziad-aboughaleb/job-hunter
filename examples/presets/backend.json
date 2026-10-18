@@ -1,0 +1,60 @@
+{
+  "profile": {
+    "target_roles": "backend software engineering (APIs, services, databases)"
+  },
+  "filters": {
+    "title_include": [
+      "backend",
+      "back-end",
+      "back end",
+      "api",
+      "python",
+      "node.js",
+      "java",
+      "golang",
+      "go engineer",
+      "rust",
+      "ruby",
+      "php"
+    ],
+    "title_exclude": [
+      "frontend",
+      "front-end",
+      "front end",
+      "ios",
+      "android",
+      "mobile",
+      "qa",
+      "sdet",
+      "data scientist",
+      "machine learning",
+      "embedded",
+      "firmware",
+      "hardware"
+    ],
+    "stack_keywords": [
+      "python",
+      "django",
+      "flask",
+      "fastapi",
+      "node",
+      "express",
+      "java",
+      "spring",
+      "golang",
+      "rust",
+      "ruby",
+      "rails",
+      "postgresql",
+      "mysql",
+      "redis",
+      "kafka",
+      "docker",
+      "kubernetes",
+      "aws",
+      "graphql",
+      "rest"
+    ],
+    "min_stack_hits": 2
+  }
+}

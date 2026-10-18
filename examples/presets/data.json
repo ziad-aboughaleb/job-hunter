@@ -1,0 +1,45 @@
+{
+  "profile": {
+    "target_roles": "data engineering, analytics engineering, data science and machine learning"
+  },
+  "filters": {
+    "title_include": [
+      "data engineer",
+      "data scientist",
+      "analytics engineer",
+      "machine learning",
+      "ml engineer",
+      "ai engineer",
+      "data analyst"
+    ],
+    "title_exclude": [
+      "frontend",
+      "front-end",
+      "designer",
+      "qa",
+      "sdet",
+      "android",
+      "ios",
+      "embedded",
+      "firmware",
+      "hardware"
+    ],
+    "stack_keywords": [
+      "python",
+      "sql",
+      "spark",
+      "airflow",
+      "dbt",
+      "pandas",
+      "pytorch",
+      "tensorflow",
+      "snowflake",
+      "bigquery",
+      "kafka",
+      "etl",
+      "scikit-learn",
+      "databricks"
+    ],
+    "min_stack_hits": 2
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "profile": {
+    "target_roles": "mobile app development (iOS, Android, React Native, Flutter)"
+  },
+  "filters": {
+    "title_include": [
+      "ios",
+      "android",
+      "mobile",
+      "react native",
+      "flutter",
+      "swift",
+      "kotlin"
+    ],
+    "title_exclude": [
+      "devops",
+      "sre",
+      "data engineer",
+      "data scientist",
+      "machine learning",
+      "qa",
+      "sdet",
+      "embedded",
+      "firmware",
+      "hardware",
+      "backend",
+      "back-end"
+    ],
+    "stack_keywords": [
+      "swift",
+      "swiftui",
+      "kotlin",
+      "jetpack compose",
+      "react native",
+      "flutter",
+      "dart",
+      "ios",
+      "android",
+      "xcode",
+      "objective-c",
+      "typescript"
+    ],
+    "min_stack_hits": 2
+  }
+}

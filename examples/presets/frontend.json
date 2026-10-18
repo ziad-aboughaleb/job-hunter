@@ -1,0 +1,59 @@
+{
+  "profile": {
+    "target_roles": "frontend web development (React, Vue, Angular, TypeScript, CSS)"
+  },
+  "filters": {
+    "title_include": [
+      "frontend",
+      "front-end",
+      "front end",
+      "ui engineer",
+      "react",
+      "vue",
+      "angular",
+      "web developer",
+      "javascript",
+      "typescript"
+    ],
+    "title_exclude": [
+      "devops",
+      "sre",
+      "data engineer",
+      "data scientist",
+      "machine learning",
+      "qa",
+      "sdet",
+      "android",
+      "ios",
+      "embedded",
+      "firmware",
+      "hardware",
+      "java",
+      "python",
+      "golang",
+      "php",
+      "ruby",
+      "c#",
+      "c++",
+      ".net"
+    ],
+    "stack_keywords": [
+      "react",
+      "vue",
+      "angular",
+      "typescript",
+      "javascript",
+      "next.js",
+      "nextjs",
+      "nuxt",
+      "redux",
+      "tailwind",
+      "css",
+      "html",
+      "vite",
+      "webpack",
+      "graphql"
+    ],
+    "min_stack_hits": 2
+  }
+}

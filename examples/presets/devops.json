@@ -1,0 +1,48 @@
+{
+  "profile": {
+    "target_roles": "DevOps, SRE, platform and cloud infrastructure engineering"
+  },
+  "filters": {
+    "title_include": [
+      "devops",
+      "sre",
+      "site reliability",
+      "platform engineer",
+      "infrastructure",
+      "cloud engineer",
+      "systems engineer",
+      "reliability"
+    ],
+    "title_exclude": [
+      "frontend",
+      "front-end",
+      "designer",
+      "qa",
+      "sdet",
+      "data scientist",
+      "machine learning",
+      "android",
+      "ios"
+    ],
+    "stack_keywords": [
+      "kubernetes",
+      "docker",
+      "terraform",
+      "aws",
+      "gcp",
+      "azure",
+      "ansible",
+      "helm",
+      "prometheus",
+      "grafana",
+      "linux",
+      "ci/cd",
+      "github actions",
+      "jenkins",
+      "python",
+      "bash",
+      "go"
+    ],
+    "min_stack_hits": 2
+  }
+}
