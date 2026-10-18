@@ -3,9 +3,9 @@ name: job-hunter
 on:
   schedule:
     # Egypt is UTC+3 (EEST). Times are in UTC:
-    - cron: "0 5 * * *" # 08:00 AM EEST (Morning full run)
-    - cron: "0 10 * * *" # 01:00 PM EEST (Midday company-only)
-    - cron: "0 15 * * *" # 06:00 PM EEST (Evening company-only)
+    - cron: "16 5 * * *" # 08:00 AM EEST (Morning full run)
+    - cron: "16 10 * * *" # 01:00 PM EEST (Midday company-only)
+    - cron: "16 15 * * *" # 06:00 PM EEST (Evening company-only)
   workflow_dispatch: # lets you run it by hand from the Actions tab
     inputs:
       no_boards:
