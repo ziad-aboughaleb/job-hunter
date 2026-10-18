@@ -54,14 +54,9 @@ jobs:
       - name: Check setup
         run: python -m jobhunter doctor || true # informational: shows what is missing in the log
 
-      # Check if triggered by scheduled 10:00 or 15:00 UTC cron, or if no_boards input is checked
+      # Check if triggered by scheduled other than 08:16 UTC cron, or if no_boards input is checked
       - name: Fetch jobs
-        run: |
-          if [ "${{ github.event.schedule }}" = "16 10 * * *" ] || [ "${{ github.event.schedule }}" = "16 15 * * *" ] || [ "${{ inputs.no_boards }}" = "true" ]; then
-            python -m jobhunter fetch --no-boards
-          else
-            python -m jobhunter fetch
-          fi
+        run: python -m jobhunter fetch ${{ ((github.event_name == 'schedule' && github.event.schedule != '16 5 * * *') || inputs.no_boards == 'true') && '--no-boards' || '' }}
 
       # if: always() on the next steps: an earlier failure must still reach the Telegram alert,
       # and must not lose the progress already recorded in seen.json.
