@@ -51,6 +51,12 @@ jobs:
           if [ -n "$PREFERENCES_MD" ]; then printf '%s\n' "$PREFERENCES_MD" > preferences.md; fi
           if [ -n "$CONFIG_JSON" ]; then printf '%s\n' "$CONFIG_JSON" > config.json; fi
 
+      - name: Restore seen.json from state branch
+        run: |
+          mkdir -p data
+          git fetch origin state || true
+          git checkout origin/state -- data/seen.json 2>/dev/null || echo "No previous state found."
+
       - name: Check setup
         run: python -m jobhunter doctor || true # informational: shows what is missing in the log
 
@@ -68,13 +74,28 @@ jobs:
         if: always()
         run: python -m jobhunter send ${{ inputs.dry_run && '--dry-run' || '' }}
 
-      - name: Save seen jobs
+      - name: Save seen jobs to state branch
         if: always() && !inputs.dry_run
         run: |
           git config user.name "job-hunter-bot"
           git config user.email "job-hunter-bot@users.noreply.github.com"
-          if [ -f data/seen.json ]; then git add -f data/seen.json; fi
+
+          # Backup the generated file outside the git working tree
+          cp data/seen.json /tmp/seen.json
+
+          # Fetch and switch to the state branch, or create it as an empty branch if it doesn't exist
+          git fetch origin state || true
+          git checkout state 2>/dev/null || git checkout --orphan state
+
+          # Clear out all files from the main branch on this working tree
+          git rm -rf . 2>/dev/null || true
+
+          # Bring back only seen.json
+          mkdir -p data
+          cp /tmp/seen.json data/seen.json
+
+          git add data/seen.json
           if ! git diff --cached --quiet; then
             git commit -m "chore: update seen jobs"
-            git push
+            git push origin state
           fi
