@@ -57,7 +57,7 @@ jobs:
       # Check if triggered by scheduled 10:00 or 15:00 UTC cron, or if no_boards input is checked
       - name: Fetch jobs
         run: |
-          if [ "${{ github.event.schedule }}" = "0 10 * * *" ] || [ "${{ github.event.schedule }}" = "0 15 * * *" ] || [ "${{ inputs.no_boards }}" = "true" ]; then
+          if [ "${{ github.event.schedule }}" = "16 10 * * *" ] || [ "${{ github.event.schedule }}" = "16 15 * * *" ] || [ "${{ inputs.no_boards }}" = "true" ]; then
             python -m jobhunter fetch --no-boards
           else
             python -m jobhunter fetch
