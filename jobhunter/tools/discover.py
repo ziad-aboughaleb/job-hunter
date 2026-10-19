@@ -33,8 +33,7 @@ URL_PATTERNS = {
 NOT_COMPANIES = {"embed", "jobs", "job_app", "www", "api", "j", "o", "careers", "app", "apply"}
 
 # Titles too generic to search on their own: they would return every kind of job.
-GENERIC_TITLES = {"engineer", "developer", "software engineer", "software developer", "junior", "entry level",
-                  "entry-level", "js", "intern", "internship", "trainee", "graduate", "associate"}
+GENERIC_TITLES = {"engineer", "developer", "software engineer", "software developer", "junior", "entry level", "entry-level", "js", "intern", "internship", "trainee", "graduate", "associate"}
 
 
 def topics_from_config(cfg: dict, include_generic: bool = False, max_topics: int = 6) -> List[str]:

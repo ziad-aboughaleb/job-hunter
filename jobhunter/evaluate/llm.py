@@ -82,7 +82,7 @@ class LLMClient:
     def _openai(self, system: str, user: str) -> str:
         key = os.environ.get(self.api_key_env, "")
         if not key:
-            raise LLMFatal(f"{self.api_key_env} is not set. Put it in .env (see examples/env.example).")
+            raise LLMFatal(f"{self.api_key_env} is not set. Put it in .env (see examples/.env.example).")
         url = self.base_url + "/chat/completions"
         headers = {"Authorization": f"Bearer {key}"}
 

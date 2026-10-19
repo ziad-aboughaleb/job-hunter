@@ -30,7 +30,7 @@ def run(dry_run: bool = False, check_only: bool = False, test: bool = False) -> 
     preview = cfg["telegram"]["link_preview"]
 
     if not (dry_run or check_only) and not (token and chat_id):
-        print("TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID are missing. Run `python -m jobhunter init` (or copy examples/env.example to .env) and fill it in.",
+        print("TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID are missing. Run `python -m jobhunter init` (or copy examples/.env.example to .env) and fill it in.",
               file=sys.stderr)
         return 1
 
