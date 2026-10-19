@@ -62,7 +62,7 @@ jobs:
 
       # Check if triggered by scheduled other than 08:16 UTC cron, or if no_boards input is checked
       - name: Fetch jobs
-        run: python -m jobhunter fetch ${{ ((github.event_name == 'schedule' && github.event.schedule != '16 5 * * *') || inputs.no_boards == 'true') && '--no-boards' || '' }}
+        run: python -m jobhunter fetch ${{ ((github.event_name == 'schedule' && github.event.schedule != '16 5 * * *') || inputs.no_boards) && '--no-boards' || '' }}
 
       # if: always() on the next steps: an earlier failure must still reach the Telegram alert,
       # and must not lose the progress already recorded in seen.json.
