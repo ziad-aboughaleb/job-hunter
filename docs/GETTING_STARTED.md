@@ -93,6 +93,12 @@ Open it and check these:
    `["united states", "usa", "us", "canada"]`, and words that rescue a listing, e.g. `["worldwide", "global", "emea"]`.
 4. Optional: `companies`: company names to watch directly (see docs/CONFIG.md).
 
+**Why there is no "fetch every company" switch.** Greenhouse, Lever, Ashby and the others only answer for one company
+at a time; none of them publishes a list of all their companies. The aggregators in `boards` cover many companies without
+a list, and for direct company boards the list has to be built. `python3 -m jobhunter discover --write` searches for company
+names that match your `title_include` words and adds them to `config.json`. Running it about once a week is enough, and
+`.github/workflows/discover.yml` does exactly that on a schedule (it also removes names that stopped existing).
+
 ## 5. Check the setup
 
 ```bash
@@ -178,12 +184,19 @@ new jobs, because finished jobs are remembered in `data/seen.json`.
 2. Repo → Settings → Secrets and variables → Actions → **New repository secret** for each of:
    `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `LLM_API_KEY`.
    Optional: `CV_MD` (the contents of `cv.md`), `PREFERENCES_MD`, `CONFIG_JSON` (the contents of `config.json`).
-   If you don't use these three secrets, commit those files instead (and remove `cv.md`/`preferences.md` from `.gitignore`).
+   If you don't use these three secrets, commit the files instead, **in a private repo only**:
+   `git add -f cv.md preferences.md config.json && git commit -m "Add my files" && git push`.
+   (`-f` adds files that `.gitignore` hides, so you never edit `.gitignore`, and later updates from the public repo don't
+   conflict. Once added, changes to those files are tracked normally.)
+   `.gitignore` hides `cv.md` and `preferences.md` on purpose: GitHub's Fork button always makes a _public_ copy, so an
+   ignored CV can't be pushed to a public fork by accident.
 3. Edit the cron line in `.github/workflows/job-hunter.yml`. GitHub cron is **UTC**.
 4. Actions tab → **job-hunter** → **Run workflow**, tick **Dry run**, run it, and read each step's log.
-5. Run it again without Dry run. A commit "chore: update seen jobs" appears: that is the memory between runs.
-   If that step fails with a permissions error: Settings → Actions → General → Workflow permissions →
-   **Read and write permissions**.
+5. Run it again without Dry run. A commit "chore: update seen jobs" appears as a commit on your `main` branch: that
+   is the memory between runs. If that step fails with a permissions error:
+   Settings → Actions → General → Workflow permissions → **Read and write permissions**.
+6. Optional extra runs: the workflow has two commented-out cron lines that poll only your listed companies
+   (`--no-boards`), so you catch new company postings faster without hitting the aggregators more than once a day.
 
 **Your own computer** (`crontab -e`):
 

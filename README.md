@@ -89,8 +89,12 @@ that drops the most is the one to loosen or tighten. Every setting and the order
 ## Good to know
 
 - **Be kind to the job sites.** Run it once a day. The aggregators ask API users to keep requests low.
+- **Your CV stays out of git by default.** `.gitignore` hides `cv.md` and `preferences.md` so a public fork can't leak them.
+  In a private repo, `git add -f cv.md preferences.md` commits them (see docs/GETTING_STARTED.md, step 7).
 - **Only public feeds are used.** There is no LinkedIn or Indeed support: they have no public feeds and forbid scraping.
 - **Coverage is uneven.** Aggregators and ATS boards favour tech companies; a given company may use none of them.
+- **There is no "all companies" switch.** The company platforms only answer one company at a time. Run
+  `python -m jobhunter discover --write` about weekly to grow your company list (`.github/workflows/discover.yml` automates it).
 - **The score is a model's judgment**, guided by your weights. Treat it as a good first filter, not a verdict.
 
 ## Contributing

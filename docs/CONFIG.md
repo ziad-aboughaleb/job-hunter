@@ -27,6 +27,9 @@ fetch (filters + limits + boards/companies) ──► candidates ──► evalu
 
 ## `companies`: specific companies to watch (optional)
 
+There is no public list of all companies on these platforms, so there is no "all companies" setting. Grow this list with
+`python -m jobhunter discover --write` (about weekly is enough; `.github/workflows/discover.yml` automates it).
+
 Lists of company names as they appear in the company's job-board URL.
 
 | Key                 | URL pattern                                       |
