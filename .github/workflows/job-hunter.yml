@@ -2,11 +2,11 @@ name: job-hunter
 
 on:
   schedule:
-    # Egypt is UTC+3 (EEST). Times are in UTC:
-    - cron: "16 5 * * *" # 08:00 AM EEST (Morning full run)
-    - cron: "16 10 * * *" # 01:00 PM EEST (Midday company-only)
-    - cron: "16 15 * * *" # 06:00 PM EEST (Evening company-only)
-  workflow_dispatch: # lets you run it by hand from the Actions tab
+    # Egypt time (UTC+3) schedules:
+    - cron: "16 5 * * *" # 08:00 AM (Morning full run)
+    - cron: "16 10 * * *" # 01:00 PM (Midday company-only)
+    - cron: "16 15 * * *" # 06:00 PM (Evening company-only)
+  workflow_dispatch: # Allows manual trigger from Actions tab
     inputs:
       no_boards:
         description: "Skip aggregator boards: fetch listed companies only"
@@ -22,7 +22,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write # lets the last step commit data/seen.json
+  contents: write # Allows workflow to commit seen.json
 
 jobs:
   run:
@@ -39,8 +39,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Personal files can live in repository secrets instead of the repo. That is the safe way to run a PUBLIC fork.
-      # Each secret is optional: if it is not set, the file from the repository is used.
+      # Fallback to repository secrets for personal config files
       - name: Write personal files from secrets
         env:
           CV_MD: ${{ secrets.CV_MD }}
@@ -51,21 +50,28 @@ jobs:
           if [ -n "$PREFERENCES_MD" ]; then printf '%s\n' "$PREFERENCES_MD" > preferences.md; fi
           if [ -n "$CONFIG_JSON" ]; then printf '%s\n' "$CONFIG_JSON" > config.json; fi
 
-      - name: Restore seen.json from state branch
+      # Safety net: warns if cv or preferences are committed in a public repository
+      - name: Warn if personal files are public
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p data
-          git fetch origin state || true
-          git checkout origin/state -- data/seen.json 2>/dev/null || echo "No previous state found."
+          private=$(gh api "repos/$GITHUB_REPOSITORY" --jq .private 2>/dev/null || echo unknown)
+          if [ "$private" = "false" ]; then
+            for f in cv.md preferences.md; do
+              if git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+                echo "::warning title=Personal file in a PUBLIC repository::$f is committed in a public repo. Make the repo private, or move it to a repository secret and remove it from git history."
+              fi
+            done
+          fi
 
       - name: Check setup
-        run: python -m jobhunter doctor || true # informational: shows what is missing in the log
+        run: python -m jobhunter doctor || true # Informational: logs missing setup items
 
-      # Check if triggered by scheduled other than 08:16 UTC cron, or if no_boards input is checked
+      # Fetch jobs based on schedule type or manual input
       - name: Fetch jobs
         run: python -m jobhunter fetch ${{ ((github.event_name == 'schedule' && github.event.schedule != '16 5 * * *') || inputs.no_boards) && '--no-boards' || '' }}
 
-      # if: always() on the next steps: an earlier failure must still reach the Telegram alert,
-      # and must not lose the progress already recorded in seen.json.
+      # always() ensures subsequent steps run even if fetch fails
       - name: Evaluate jobs
         if: always()
         run: python -m jobhunter evaluate
@@ -74,28 +80,14 @@ jobs:
         if: always()
         run: python -m jobhunter send ${{ inputs.dry_run && '--dry-run' || '' }}
 
-      - name: Save seen jobs to state branch
+      - name: Save seen jobs to main branch
         if: always() && !inputs.dry_run
         run: |
           git config user.name "job-hunter-bot"
           git config user.email "job-hunter-bot@users.noreply.github.com"
 
-          # Backup the generated file outside the git working tree
-          cp data/seen.json /tmp/seen.json
-
-          # Fetch and switch to the state branch, or create it as an empty branch if it doesn't exist
-          git fetch origin state || true
-          git checkout state 2>/dev/null || git checkout --orphan state
-
-          # Clear out all files from the main branch on this working tree
-          git rm -rf . 2>/dev/null || true
-
-          # Bring back only seen.json
-          mkdir -p data
-          cp /tmp/seen.json data/seen.json
-
           git add data/seen.json
           if ! git diff --cached --quiet; then
             git commit -m "chore: update seen jobs"
-            git push origin state
+            git push
           fi
