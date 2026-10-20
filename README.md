@@ -59,7 +59,7 @@ jobhunter/                 the code (python -m jobhunter ...)
 ├── send/                  STAGE 3  matches.py, telegram.py, stage.py
 └── tools/                 init, doctor, prompt, discover, prune
 tests/                     mirrors the code folders; no network needed
-docs/                      GETTING_STARTED, CONFIG (every setting), ARCHITECTURE, CONTRIBUTING, MIGRATING
+docs/                      GETTING_STARTED, CONFIG (every setting), ARCHITECTURE, CONTRIBUTING
 examples/                  config template, role presets, CV and preferences templates
 .github/workflows/         the daily job and the test runner
 ```
@@ -100,4 +100,4 @@ that drops the most is the one to loosen or tighten. Every setting and the order
 ## Contributing
 
 See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md). Adding a new job site is one small file; [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-walks through it. Upgrading from the old script version? See [docs/MIGRATING.md](docs/MIGRATING.md).
+walks through it.
