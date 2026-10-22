@@ -12,6 +12,10 @@ on:
         description: "Skip aggregator boards: fetch listed companies only"
         type: boolean
         default: false
+      ignore_seen:
+        description: "Ignore seen jobs: re-evaluate jobs that were already processed"
+        type: boolean
+        default: false
       dry_run:
         description: "Dry run: print the Telegram messages in the log, send nothing, save nothing"
         type: boolean
@@ -69,7 +73,7 @@ jobs:
 
       # Fetch jobs based on schedule type or manual input
       - name: Fetch jobs
-        run: python -m jobhunter fetch ${{ ((github.event_name == 'schedule' && github.event.schedule != '16 5 * * *') || inputs.no_boards) && '--no-boards' || '' }}
+        run: python -m jobhunter fetch ${{ ((github.event_name == 'schedule' && github.event.schedule != '16 5 * * *') || inputs.no_boards) && '--no-boards' || '' }} ${{ inputs.ignore_seen && '--ignore-seen' || '' }}
 
       # always() ensures subsequent steps run even if fetch fails
       - name: Evaluate jobs
@@ -80,14 +84,21 @@ jobs:
         if: always()
         run: python -m jobhunter send ${{ inputs.dry_run && '--dry-run' || '' }}
 
-      - name: Save seen jobs to main branch
+      - name: Save seen jobs and artifacts to main branch
         if: always() && !inputs.dry_run
         run: |
           git config user.name "job-hunter-bot"
           git config user.email "job-hunter-bot@users.noreply.github.com"
 
-          git add data/seen.json
+          # Always stage seen.json
+          git add -f data/seen.json
+
+          # Track optional artifacts individually if they exist
+          [ -f data/candidates.json ] && git add -f data/candidates.json
+          [ -f data/run_status.json ] && git add -f data/run_status.json
+          [ -f data/results.json ] && git add -f data/results.json
+
           if ! git diff --cached --quiet; then
-            git commit -m "chore: update seen jobs"
+            git commit -m "chore: update seen jobs and run artifacts"
             git push
           fi
