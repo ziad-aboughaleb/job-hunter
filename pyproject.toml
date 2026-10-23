@@ -1,0 +1,15 @@
+[project]
+name = "job-hunter"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [{ name = "ziad-aboughaleb", email = "ziadaboughaleb@gmail.com" }]
+requires-python = ">=3.14"
+dependencies = []
+
+[project.scripts]
+jobhunter = "job_hunter:main"
+
+[build-system]
+requires = ["uv_build>=0.13.1,<0.14.0"]
+build-backend = "uv_build"
