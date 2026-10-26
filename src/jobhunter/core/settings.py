@@ -1,8 +1,9 @@
-import json
 from typing import Any
 
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from jobhunter.core.state import load_config
 
 from .paths import get_project_root
 
@@ -83,10 +84,9 @@ class Settings(BaseSettings):
 def load_settings() -> Settings:
   """Loads settings from JSON and Markdown files, returning a Settings object."""
   config_dir = get_project_root() / "config"
-  config_path = config_dir / "config.json"
 
   # Load JSON
-  config_data = json.loads(config_path.read_text(encoding="utf-8")) if config_path.exists() else {}
+  config_data = load_config()
 
   # Remove "_help"
   config_data.pop("_help", None)

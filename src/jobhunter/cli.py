@@ -11,6 +11,7 @@ app = typer.Typer(
   context_settings={"help_option_names": ["-h", "--help"]},
 )
 
+# Fetch options
 SourceOpt = typer.Option(None, "--source", "-s", help="Specific source to fetch from")
 NoAggOpt = typer.Option(False, "--no-aggregators", help="Skip aggregator boards")
 IgnoreSeenOpt = typer.Option(False, "--ignore-seen", help="Ignore seen jobs and fetch all")
@@ -39,8 +40,12 @@ def send_jobs():
 
 
 @app.command("discover", help="Discover and validate new company boards")
-def discover_boards():
-  discover.main()
+def discover_boards(
+  write: bool = typer.Option(False, "--write", "-w", help="Write discovered slugs to config.json"),
+  source=SourceOpt,
+  titles: str | None = typer.Option(None, "--titles", "-t", help="Comma-separated list of titles to search for"),
+):
+  discover.main(write=write, source_name=source, titles_override=titles)
 
 
 @app.command("prune", help="Prune broken company entries from config/config.json")

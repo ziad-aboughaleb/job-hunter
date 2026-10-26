@@ -9,12 +9,13 @@ from .paths import get_project_root
 
 DATA_DIR = get_project_root() / "data"
 DATA_DIR.mkdir(exist_ok=True)
+CONFIG_DIR = get_project_root() / "config"
 
 
 # helper functions for reading and writing JSON files
-def _read_json(filename: str, default: Any) -> Any:
+def _read_json(filename: str, default: Any, base_dir: Path = DATA_DIR) -> Any:
   """Reads JSON data from a file and returns it. If the file does not exist, returns the provided default value."""
-  file_path = DATA_DIR / filename
+  file_path = base_dir / filename
 
   if not file_path.exists():
     return default
@@ -23,11 +24,11 @@ def _read_json(filename: str, default: Any) -> Any:
     return json.load(f)
 
 
-def _atomic_write_json(filename: str, data: Any) -> None:
+def _atomic_write_json(filename: str, data: Any, base_dir: Path = DATA_DIR) -> None:
   """Writes JSON data to a file atomically by first writing to a temporary file and then replacing the target file."""
-  target_path = DATA_DIR / filename
+  target_path = base_dir / filename
 
-  fd, tmp_path = tempfile.mkstemp(dir=DATA_DIR, text=True)
+  fd, tmp_path = tempfile.mkstemp(dir=base_dir, text=True)
   with open(fd, "w", encoding="utf-8") as f:
     json.dump(data, f, indent=2)
 
@@ -67,3 +68,14 @@ def load_seen() -> dict[str, str]:
 def save_seen(new_seen: dict[str, str]) -> None:
   """Saves the updated dictionary of processed Job IDs."""
   _atomic_write_json("seen.json", new_seen)
+
+
+# Config functions
+def load_config() -> dict[str, Any]:
+  """Loads the configuration dictionary from config.json."""
+  return _read_json("config.json", {}, base_dir=CONFIG_DIR)
+
+
+def save_config(config_data: dict[str, Any]) -> None:
+  """Saves the configuration dictionary to config.json in an atomic manner."""
+  _atomic_write_json("config.json", config_data, base_dir=CONFIG_DIR)

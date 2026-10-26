@@ -8,6 +8,7 @@ from jobhunter.models import Job
 class BaseSource(ABC):
   name: str
   domains: list[str]
+  is_subdomain: bool = False
   is_aggregator: bool = False
   board_config: dict[str, Any] | bool
   enabled: bool

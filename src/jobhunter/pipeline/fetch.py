@@ -14,13 +14,14 @@ console = Console()
 
 
 def main(source_name: str | None, no_aggregators: bool = False, ignore_seen: bool = False):
+  """Fetches jobs from all configured sources and saves new candidates to the state."""
   tasks = []
 
   for name, source in SOURCES.items():
-    is_aggregator = getattr(source, "is_aggregator", False)
-
     if source_name and name != source_name:
       continue
+
+    is_aggregator = getattr(source, "is_aggregator", False)
 
     if is_aggregator and not no_aggregators:
       tasks.append((source, ""))

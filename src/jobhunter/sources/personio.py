@@ -9,6 +9,7 @@ from jobhunter.sources.base import BaseSource
 class Source(BaseSource):
   name = "personio"
   domains = ["personio.de", "personio.com"]
+  is_subdomain = True
 
   def fetch(self, slug: str = "", **kwargs) -> list[Job]:
     """Fetches job listings from a specific company's Personio XML feed."""
