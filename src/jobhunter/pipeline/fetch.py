@@ -1,6 +1,6 @@
 import concurrent.futures
 
-from rich.console import Console, JustifyMethod
+from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 
 from jobhunter.core.filters import passes_all_filters

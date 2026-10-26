@@ -1,5 +1,4 @@
 from jobhunter.core.http import fetch_json
-from jobhunter.core.settings import settings
 from jobhunter.core.textutil import clean_html, parse_date
 from jobhunter.models import Job
 from jobhunter.sources.base import BaseSource

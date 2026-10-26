@@ -15,7 +15,7 @@ def fetch_json(
 
   for attempt in range(retries):
     try:
-      response = httpx.get(url, headers=req_headers, timeout=timeout, **kwargs)
+      response = httpx.get(url, headers=req_headers, timeout=timeout, http2=True, **kwargs)
       response.raise_for_status()
 
       data = response.json()
@@ -48,7 +48,7 @@ def fetch_url(url: str, headers: dict | None = None, timeout: float = 15.0, retr
 
   for attempt in range(retries):
     try:
-      response = httpx.get(url, headers=req_headers, timeout=timeout, **kwargs)
+      response = httpx.get(url, headers=req_headers, timeout=timeout, http2=True, **kwargs)
       response.raise_for_status()
       return response
     except httpx.HTTPError as e:
