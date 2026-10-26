@@ -8,7 +8,14 @@
   "boards": {
     "remotive": { "enabled": true, "category": "software-dev" },
     "remoteok": true,
-    "arbeitnow": false
+    "arbeitnow": false,
+    "greenhouse": true,
+    "lever": true,
+    "lever_eu": true,
+    "ashby": true,
+    "recruitee": true,
+    "workable": true,
+    "personio": true
   },
 
   "companies": {

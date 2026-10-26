@@ -9,14 +9,9 @@ class Source(BaseSource):
   name = "remoteok"
   domains = ["remoteok.com"]
   is_aggregator = True
-  board_config = settings.boards.get("remotive", {})
-  enabled = board_config.get("enabled", True) if isinstance(board_config, dict) else bool(board_config)
 
   def fetch(self, slug: str = "", **kwargs) -> list[Job]:
     """Fetches remote job listings from RemoteOK API."""
-    if not self.enabled:
-      return []
-
     url = "https://remoteok.com/api"
 
     data = fetch_json(url, expected_type=list)

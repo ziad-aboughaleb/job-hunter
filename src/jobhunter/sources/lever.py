@@ -9,13 +9,9 @@ from jobhunter.sources.base import BaseSource
 class Source(BaseSource):
   name = "lever"
   domains = ["lever.co"]
-  is_aggregator = False
 
   def fetch(self, slug: str = "", **kwargs) -> list[Job]:
     """Fetches job listings from a specific company's Lever API."""
-    if not slug:
-      return []
-
     url = f"https://api.lever.co/v0/postings/{slug}?mode=json"
 
     data = fetch_json(url, expected_type=list)

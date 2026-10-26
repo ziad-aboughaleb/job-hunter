@@ -1,5 +1,4 @@
 from jobhunter.core.http import fetch_json
-from jobhunter.core.settings import settings
 from jobhunter.core.textutil import clean_html, parse_date
 from jobhunter.models import Job
 from jobhunter.sources.base import BaseSource
@@ -9,15 +8,10 @@ class Source(BaseSource):
   name = "remotive"
   domains = ["remotive.com", "remotive.io"]
   is_aggregator = True
-  board_config = settings.boards.get("remotive", {})
-  enabled = board_config.get("enabled", True) if isinstance(board_config, dict) else bool(board_config)
 
   def fetch(self, slug: str = "", **kwargs) -> list[Job]:
     """Fetches remote job listings from the Remotive API."""
-    if not self.enabled:
-      return []
-
-    category = self.board_config.get("category", "software-dev")
+    category = self.board_config.get("category", "software-dev") if isinstance(self.board_config, dict) else "software-dev"
 
     url = f"https://remotive.com/api/remote-jobs?category={category}"
 

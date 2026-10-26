@@ -22,6 +22,10 @@ for _, module_name, _ in pkgutil.iter_modules([current_dir]):
 
 def execute_scraper(source, slug: str = "") -> list[Job]:
   """Executes the scraper for a given source and slug."""
+  if source.enabled:
+    return []
+  if not source.is_aggregator and not slug:
+    return []
   return source.fetch(slug=slug) or []
 
 

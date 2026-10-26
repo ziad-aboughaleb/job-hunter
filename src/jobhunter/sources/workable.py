@@ -7,7 +7,6 @@ from jobhunter.sources.base import BaseSource
 class Source(BaseSource):
   name = "workable"
   domains = ["workable.com"]
-  is_aggregator = False
 
   @staticmethod
   def _parse_location(item: dict, location_obj: dict) -> str:
@@ -32,9 +31,6 @@ class Source(BaseSource):
 
   def fetch(self, slug: str = "", **kwargs) -> list[Job]:
     """Fetches job listings from a specific company's Workable widget API."""
-    if not slug:
-      return []
-
     url = f"https://apply.workable.com/api/v1/widget/accounts/{slug}?details=true"
 
     data = fetch_json(url, expected_type=dict)

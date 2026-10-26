@@ -7,13 +7,9 @@ from jobhunter.sources.base import BaseSource
 class Source(BaseSource):
   name = "recruitee"
   domains = ["recruitee.com"]
-  is_aggregator = False
 
   def fetch(self, slug: str = "", **kwargs) -> list[Job]:
     """Fetches job listings from a specific company's Recruitee API."""
-    if not slug:
-      return []
-
     url = f"https://{slug}.recruitee.com/api/offers/"
 
     data = fetch_json(url, expected_type=dict)

@@ -2,7 +2,6 @@ import time
 from datetime import UTC, datetime
 
 from jobhunter.core.http import fetch_json
-from jobhunter.core.settings import settings
 from jobhunter.core.textutil import clean_html, parse_date
 from jobhunter.models import Job
 from jobhunter.sources.base import BaseSource
@@ -12,14 +11,9 @@ class Source(BaseSource):
   name = "arbeitnow"
   domains = ["arbeitnow.com"]
   is_aggregator = True
-  board_config = settings.boards.get("arbeitnow", {})
-  enabled = board_config.get("enabled", True) if isinstance(board_config, dict) else bool(board_config)
 
   def fetch(self, slug: str = "", **kwargs) -> list[Job]:
     """Fetches all available job listings from the Arbeitnow API via pagination link traversal."""
-    if not self.enabled:
-      return []
-
     url = "https://www.arbeitnow.com/api/job-board-api"
 
     jobs = []

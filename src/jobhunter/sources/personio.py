@@ -9,13 +9,9 @@ from jobhunter.sources.base import BaseSource
 class Source(BaseSource):
   name = "personio"
   domains = ["personio.de", "personio.com"]
-  is_aggregator = False
 
   def fetch(self, slug: str = "", **kwargs) -> list[Job]:
     """Fetches job listings from a specific company's Personio XML feed."""
-    if not slug:
-      return []
-
     response = None
     base_url = ""
     headers = {"Accept": "application/xml,text/xml,*/*"}
