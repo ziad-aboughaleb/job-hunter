@@ -1,5 +1,5 @@
-import httpx
-
+from jobhunter.core.http import fetch_json
+from jobhunter.core.settings import settings
 from jobhunter.core.textutil import clean_html, parse_date
 from jobhunter.models import Job
 from jobhunter.sources.base import BaseSource
@@ -9,29 +9,24 @@ class Source(BaseSource):
   name = "remoteok"
   domains = ["remoteok.com"]
   is_aggregator = True
+  board_config = settings.boards.get("remotive", {})
+  enabled = board_config.get("enabled", True) if isinstance(board_config, dict) else bool(board_config)
 
-  def fetch(self, **kwargs) -> list[Job]:
+  def fetch(self, slug: str = "", **kwargs) -> list[Job]:
     """Fetches remote job listings from RemoteOK API."""
-    url = "https://remoteok.com/api"
-
-    # RemoteOK frequently blocks default Python user-agents with a 403 Forbidden.
-    # Adding a standard browser User-Agent ensures the request succeeds.
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-
-    try:
-      response = httpx.get(url, headers=headers, timeout=15.0)
-      response.raise_for_status()
-      data = response.json()
-    except httpx.HTTPError as e:
-      print(f"Failed to fetch from RemoteOK: {e}")
+    if not self.enabled:
       return []
 
-    if not isinstance(data, list):
+    url = "https://remoteok.com/api"
+
+    data = fetch_json(url, expected_type=list)
+    if not data:
       return []
 
     jobs = []
 
     for item in data:
+      # Skip non-dict items and RemoteOK's legal/meta notice header block
       if not isinstance(item, dict) or not item.get("position"):
         continue
 

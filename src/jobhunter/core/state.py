@@ -64,6 +64,6 @@ def load_seen() -> dict[str, str]:
   return _read_json("seen.json", {})
 
 
-def update_seen(new_seen: dict[str, str]) -> None:
+def save_seen(new_seen: dict[str, str]) -> None:
   """Saves the updated dictionary of processed Job IDs."""
   _atomic_write_json("seen.json", new_seen)

@@ -1,5 +1,4 @@
-import httpx
-
+from jobhunter.core.http import fetch_json
 from jobhunter.core.textutil import clean_html, parse_date
 from jobhunter.models import Job
 from jobhunter.sources.base import BaseSource
@@ -17,15 +16,8 @@ class Source(BaseSource):
 
     url = f"https://{slug}.recruitee.com/api/offers/"
 
-    try:
-      response = httpx.get(url, timeout=15.0)
-      response.raise_for_status()
-      data = response.json()
-    except httpx.HTTPError as e:
-      print(f"Failed to fetch {slug} from Recruitee: {e}")
-      return []
-
-    if not isinstance(data, dict):
+    data = fetch_json(url, expected_type=dict)
+    if not data:
       return []
 
     jobs = []

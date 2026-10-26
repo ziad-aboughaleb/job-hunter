@@ -1,5 +1,4 @@
-import httpx
-
+from jobhunter.core.http import fetch_json
 from jobhunter.core.textutil import clean_html, parse_date
 from jobhunter.models import Job
 from jobhunter.sources.base import BaseSource
@@ -17,18 +16,10 @@ class Source(BaseSource):
 
     url = f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs?content=true"
 
-    try:
-      response = httpx.get(url, timeout=15.0)
-      response.raise_for_status()
-      data = response.json()
-    except httpx.HTTPError as e:
-      print(f"Failed to fetch {slug} from Greenhouse: {e}")
+    data = fetch_json(url, expected_type=dict)
+    if not data:
       return []
 
-    if not isinstance(data, dict):
-      return []
-
-    company = slug.replace("-", " ").title()
     jobs = []
 
     for item in data.get("jobs", []):
@@ -36,7 +27,7 @@ class Source(BaseSource):
         Job(
           source=self.name,
           board=slug,
-          company=company,
+          company=slug.replace("-", " ").title(),
           job_id=str(item.get("id", "")),
           title=item.get("title") or "",
           url=item.get("absolute_url") or "",

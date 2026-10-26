@@ -1,7 +1,6 @@
 from datetime import UTC, datetime
 
-import httpx
-
+from jobhunter.core.http import fetch_json
 from jobhunter.core.textutil import clean_html, parse_date
 from jobhunter.models import Job
 from jobhunter.sources.base import BaseSource
@@ -12,27 +11,17 @@ class Source(BaseSource):
   domains = ["lever.co"]
   is_aggregator = False
 
-  def fetch(self, slug: str = "", is_eu: bool = False, **kwargs) -> list[Job]:
+  def fetch(self, slug: str = "", **kwargs) -> list[Job]:
     """Fetches job listings from a specific company's Lever API."""
     if not slug:
       return []
 
-    is_eu = is_eu or kwargs.get("eu", False)
-    host = "api.eu.lever.co" if is_eu else "api.lever.co"
-    url = f"https://{host}/v0/postings/{slug}?mode=json"
+    url = f"https://api.lever.co/v0/postings/{slug}?mode=json"
 
-    try:
-      response = httpx.get(url, timeout=15.0)
-      response.raise_for_status()
-      data = response.json()
-    except httpx.HTTPError as e:
-      print(f"Failed to fetch {slug} from Lever ({host}): {e}")
+    data = fetch_json(url, expected_type=list)
+    if not data:
       return []
 
-    if not isinstance(data, list):
-      return []
-
-    company = slug.replace("-", " ").title()
     jobs = []
 
     for item in data:
@@ -53,9 +42,9 @@ class Source(BaseSource):
 
       jobs.append(
         Job(
-          source="lever_eu" if is_eu else self.name,
+          source=self.name,
           board=slug,
-          company=company,
+          company=slug.replace("-", " ").title(),
           job_id=str(item.get("id", "")),
           title=item.get("text") or "",
           url=item.get("hostedUrl") or "",

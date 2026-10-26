@@ -9,5 +9,5 @@ class BaseSource(ABC):
   is_aggregator: bool = False
 
   @abstractmethod
-  def fetch(self, *args, **kwargs) -> list[Job]:
+  def fetch(self, slug: str = "", **kwargs) -> list[Job]:
     pass

@@ -1,7 +1,5 @@
-from urllib.parse import quote
-
-import httpx
-
+from jobhunter.core.http import fetch_json
+from jobhunter.core.settings import settings
 from jobhunter.core.textutil import clean_html, parse_date
 from jobhunter.models import Job
 from jobhunter.sources.base import BaseSource
@@ -11,20 +9,20 @@ class Source(BaseSource):
   name = "remotive"
   domains = ["remotive.com", "remotive.io"]
   is_aggregator = True
+  board_config = settings.boards.get("remotive", {})
+  enabled = board_config.get("enabled", True) if isinstance(board_config, dict) else bool(board_config)
 
-  def fetch(self, category: str = "software-dev", limit: int = 300, **kwargs) -> list[Job]:
+  def fetch(self, slug: str = "", **kwargs) -> list[Job]:
     """Fetches remote job listings from the Remotive API."""
-    url = f"https://remotive.com/api/remote-jobs?limit={limit}"
+    if not self.enabled:
+      return []
 
-    if category:
-      url += f"&category={quote(category)}"
+    category = self.board_config.get("category", "software-dev")
 
-    try:
-      response = httpx.get(url, timeout=15.0)
-      response.raise_for_status()
-      data = response.json()
-    except httpx.HTTPError as e:
-      print(f"Failed to fetch from Remotive: {e}")
+    url = f"https://remotive.com/api/remote-jobs?category={category}"
+
+    data = fetch_json(url, expected_type=dict)
+    if not data:
       return []
 
     jobs = []

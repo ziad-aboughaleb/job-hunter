@@ -1,46 +1,26 @@
 import concurrent.futures
 
-from rich.console import Console
+from rich.console import Console, JustifyMethod
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 
 from jobhunter.core.filters import passes_all_filters
 from jobhunter.core.settings import settings
 from jobhunter.core.state import load_candidates, load_seen, save_candidates
 from jobhunter.models import Job
-from jobhunter.sources import SOURCES
+from jobhunter.sources import SOURCES, execute_scraper
 
 console = Console()
-
-
-def is_source_enabled(source_name: str) -> bool:
-  """Checks if a source is explicitly disabled in settings.boards."""
-  board_cfg = settings.boards.get(source_name)
-  if isinstance(board_cfg, bool):
-    return board_cfg
-  if isinstance(board_cfg, dict):
-    return board_cfg.get("enabled", True)
-  return True
-
-
-def execute_scraper(source, slug: str | None = None) -> list[Job]:
-  """Runs a single scraper instance for a specific board or company."""
-  if slug:
-    return source.fetch(slug=slug) or []
-  return source.fetch() or []
 
 
 def main(no_boards: bool = False):
   tasks = []
 
   for name, source in SOURCES.items():
-    if not is_source_enabled(name):
-      continue
-
     is_aggregator = getattr(source, "is_aggregator", False)
 
     if is_aggregator:
       if not no_boards:
-        tasks.append((source, None))
+        tasks.append((source, ""))
     else:
       slugs = settings.companies.get(name, [])
       for slug in slugs:
@@ -54,9 +34,10 @@ def main(no_boards: bool = False):
   max_workers = settings.limits.fetch_workers
 
   with Progress(
-    SpinnerColumn(),
+    SpinnerColumn("dots", style="cyan"),
     TextColumn("[progress.description]{task.description}"),
-    BarColumn(),
+    TextColumn("[dim]{task.completed}/{task.total}[/dim]"),
+    BarColumn(bar_width=24, style="dim cyan", complete_style="green", finished_style="bold green"),
     TaskProgressColumn(),
     console=console,
   ) as progress:
@@ -69,7 +50,8 @@ def main(no_boards: bool = False):
         name = future_to_name[future]
         try:
           result = future.result()
-          fetched_jobs.extend(result)
+          if result:
+            fetched_jobs.extend(result)
 
           progress.update(fetch_task, advance=1, description=f"[cyan]Fetching... [dim](Finished {name})[/dim]")
         except Exception as e:
@@ -109,6 +91,7 @@ def main(no_boards: bool = False):
     candidates.extend(new_passing_jobs)
     save_candidates(candidates)
 
+  # print summary
   console.print("\n[bold]Fetch Summary[/bold]")
   console.print("──────────────────────────────")
   console.print(f"Total raw jobs  : [cyan]{len(fetched_jobs)}[/cyan]")
@@ -117,7 +100,3 @@ def main(no_boards: bool = False):
   console.print(f"Failed filters  : [magenta]{skipped_filters}[/magenta]")
   console.print(f"New candidates  : [bold green]{len(new_passing_jobs)}[/bold green]")
   console.print("──────────────────────────────\n")
-
-
-if __name__ == "__main__":
-  main()

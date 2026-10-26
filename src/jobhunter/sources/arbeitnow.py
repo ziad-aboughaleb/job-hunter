@@ -1,7 +1,8 @@
-import datetime
+import time
+from datetime import UTC, datetime
 
-import httpx
-
+from jobhunter.core.http import fetch_json
+from jobhunter.core.settings import settings
 from jobhunter.core.textutil import clean_html, parse_date
 from jobhunter.models import Job
 from jobhunter.sources.base import BaseSource
@@ -11,23 +12,21 @@ class Source(BaseSource):
   name = "arbeitnow"
   domains = ["arbeitnow.com"]
   is_aggregator = True
+  board_config = settings.boards.get("arbeitnow", {})
+  enabled = board_config.get("enabled", True) if isinstance(board_config, dict) else bool(board_config)
 
-  def fetch(self, pages: int = 2, **kwargs) -> list[Job]:
-    """Fetches job listings from the Arbeitnow API (supports pagination)."""
+  def fetch(self, slug: str = "", **kwargs) -> list[Job]:
+    """Fetches all available job listings from the Arbeitnow API via pagination link traversal."""
+    if not self.enabled:
+      return []
+
     url = "https://www.arbeitnow.com/api/job-board-api"
 
     jobs = []
 
-    for _ in range(pages):
-      if not url:
-        break
-
-      try:
-        response = httpx.get(url, timeout=15.0)
-        response.raise_for_status()
-        data = response.json()
-      except httpx.HTTPError as e:
-        print(f"Failed to fetch from Arbeitnow: {e}")
+    while url:
+      data = fetch_json(url, expected_type=dict)
+      if not data:
         break
 
       for item in data.get("data", []):
@@ -36,13 +35,8 @@ class Source(BaseSource):
         if tags:
           description = f"Tags: {tags}\n\n{description}"
 
-        # Arbeitnow returns epoch seconds; convert it to YYYY-MM-DD
         created = item.get("created_at")
-
-        if isinstance(created, (int, float)):
-          posted = datetime.datetime.fromtimestamp(created, tz=datetime.UTC).strftime("%Y-%m-%d")
-        else:
-          posted = parse_date(str(created))
+        posted = datetime.fromtimestamp(created, tz=UTC).strftime("%Y-%m-%d") if isinstance(created, (int, float)) else parse_date(str(created))
 
         jobs.append(
           Job(
@@ -59,6 +53,10 @@ class Source(BaseSource):
           )
         )
 
+      # Paginate until the API returns a null/empty next link
       url = (data.get("links") or {}).get("next")
+
+      if url:
+        time.sleep(1.5)
 
     return jobs

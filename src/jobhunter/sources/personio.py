@@ -1,7 +1,6 @@
 import xml.etree.ElementTree as ET
 
-import httpx
-
+from jobhunter.core.http import fetch_url
 from jobhunter.core.textutil import clean_html, parse_date
 from jobhunter.models import Job
 from jobhunter.sources.base import BaseSource
@@ -17,26 +16,24 @@ class Source(BaseSource):
     if not slug:
       return []
 
-    text = None
+    response = None
     base_url = ""
+    headers = {"Accept": "application/xml,text/xml,*/*"}
 
     for domain in ("de", "com"):
       base_url = f"https://{slug}.jobs.personio.{domain}"
       url = f"{base_url}/xml?language=en"
-      try:
-        response = httpx.get(url, headers={"Accept": "application/xml,text/xml,*/*"}, timeout=15.0)
-        if response.status_code == 200:
-          text = response.text
-          break
-      except httpx.HTTPError:
-        continue
 
-    if not text:
+      response = fetch_url(url, headers=headers)
+      if response:
+        break
+
+    if not response:
       print(f"Failed to fetch {slug} from Personio (tried .de and .com)")
       return []
 
     try:
-      root = ET.fromstring(text)
+      root = ET.fromstring(response.text)
     except ET.ParseError as exc:
       print(f"Failed to parse XML for {slug} from Personio: {exc}")
       return []

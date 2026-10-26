@@ -1,5 +1,4 @@
-import httpx
-
+from jobhunter.core.http import fetch_json
 from jobhunter.core.textutil import clean_html, parse_date
 from jobhunter.models import Job
 from jobhunter.sources.base import BaseSource
@@ -38,18 +37,10 @@ class Source(BaseSource):
 
     url = f"https://apply.workable.com/api/v1/widget/accounts/{slug}?details=true"
 
-    try:
-      response = httpx.get(url, timeout=15.0)
-      response.raise_for_status()
-      data = response.json()
-    except httpx.HTTPError as e:
-      print(f"Failed to fetch {slug} from Workable: {e}")
+    data = fetch_json(url, expected_type=dict)
+    if not data:
       return []
 
-    if not isinstance(data, dict):
-      return []
-
-    company = data.get("name") or slug.replace("-", " ").title()
     jobs = []
 
     for item in data.get("jobs", []):
@@ -60,13 +51,13 @@ class Source(BaseSource):
         Job(
           source=self.name,
           board=slug,
-          company=company,
+          company=data.get("name") or slug.replace("-", " ").title(),
           job_id=str(item.get("shortcode") or item.get("id") or item.get("code") or ""),
           title=item.get("title") or "",
           url=item.get("url") or item.get("shortlink") or item.get("application_url") or "",
           location=self._parse_location(item, location_obj),
           remote=True if is_remote else None,
-          description=clean_html(item.get("description") or item.get("full_description")),
+          description=clean_html(item.get("description") or item.get("full_description") or ""),
           posted=parse_date(item.get("published_on") or item.get("created_at")),
         )
       )
