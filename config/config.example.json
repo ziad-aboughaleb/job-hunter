@@ -1,0 +1,87 @@
+{
+  "_help": "Template used by `python -m jobhunter init`. Only settings you change are needed: every setting has a default. Full reference: docs/CONFIG.md",
+
+  "profile": {
+    "target_roles": "software engineering work that fits the candidate's CV and preferences"
+  },
+
+  "boards": {
+    "remotive": { "enabled": true, "category": "software-dev" },
+    "remoteok": true,
+    "arbeitnow": false
+  },
+
+  "companies": {
+    "greenhouse": [],
+    "lever": [],
+    "lever_eu": [],
+    "ashby": [],
+    "recruitee": [],
+    "workable": [],
+    "personio": []
+  },
+
+  "filters": {
+    "title_include": ["engineer", "developer"],
+    "title_exclude": [
+      "recruiter",
+      "sales",
+      "marketing",
+      "account executive",
+      "customer success",
+      "designer"
+    ],
+    "stack_keywords": [],
+    "min_stack_hits": 0,
+    "company_exclude": [],
+    "company_priority": [],
+    "require_remote": true,
+    "location_exclude_terms": [],
+    "location_allow_terms": [],
+    "location_require_terms": [],
+    "max_age_days": 14
+  },
+
+  "limits": {
+    "max_candidates_per_run": 30,
+    "description_max_chars": 7000,
+    "max_messages": 15,
+    "seen_retention_days": 90,
+    "fetch_workers": 8
+  },
+
+  "score_threshold": 75,
+
+  "scoring_weights": [
+    {
+      "name": "Core skills overlap",
+      "weight": 40,
+      "what": "required technologies and skills that the CV demonstrates"
+    },
+    {
+      "name": "Experience and seniority fit",
+      "weight": 20,
+      "what": "years and level compared with the CV"
+    },
+    {
+      "name": "Role type and location fit",
+      "weight": 20,
+      "what": "title fit, and a work arrangement and location that suit the candidate"
+    },
+    {
+      "name": "Nice-to-haves",
+      "weight": 20,
+      "what": "secondary tools, methodologies and soft skills"
+    }
+  ],
+
+  "llm": {
+    "provider": "openai",
+    "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+    "model": "gemini-3.5-flash-lite",
+    "api_key_env": "LLM_API_KEY",
+    "request_delay": 5
+  },
+
+  "telegram": { "link_preview": false, "notify_on_empty": true }
+}
