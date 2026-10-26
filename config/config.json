@@ -6,16 +6,7 @@
     "remotive": {
       "enabled": true,
       "category": "software-dev"
-    },
-    "remoteok": true,
-    "arbeitnow": true,
-    "greenhouse": true,
-    "lever": true,
-    "lever_eu": true,
-    "ashby": true,
-    "recruitee": true,
-    "workable": true,
-    "personio": true
+    }
   },
   "companies": {
     "greenhouse": [

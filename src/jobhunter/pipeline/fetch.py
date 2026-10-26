@@ -2,6 +2,7 @@ import concurrent.futures
 
 from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
+from rich.table import Column
 
 from jobhunter.core.filters import passes_all_filters
 from jobhunter.core.settings import settings
@@ -12,15 +13,17 @@ from jobhunter.sources import SOURCES, execute_scraper
 console = Console()
 
 
-def main(no_boards: bool = False):
+def main(source_name: str | None, no_aggregators: bool = False, ignore_seen: bool = False):
   tasks = []
 
   for name, source in SOURCES.items():
     is_aggregator = getattr(source, "is_aggregator", False)
 
-    if is_aggregator:
-      if not no_boards:
-        tasks.append((source, ""))
+    if source_name and name != source_name:
+      continue
+
+    if is_aggregator and not no_aggregators:
+      tasks.append((source, ""))
     else:
       slugs = settings.companies.get(name, [])
       for slug in slugs:
@@ -35,10 +38,11 @@ def main(no_boards: bool = False):
 
   with Progress(
     SpinnerColumn("dots", style="cyan"),
-    TextColumn("[progress.description]{task.description}"),
+    TextColumn("{task.description}", table_column=Column(ratio=1)),
     TextColumn("[dim]{task.completed}/{task.total}[/dim]"),
     BarColumn(bar_width=24, style="dim cyan", complete_style="green", finished_style="bold green"),
     TaskProgressColumn(),
+    expand=True,
     console=console,
   ) as progress:
     fetch_task = progress.add_task("[cyan]Starting fetch...", total=len(tasks))
@@ -72,7 +76,7 @@ def main(no_boards: bool = False):
   for job in fetched_jobs:
     unique_id = f"{job.source}:{job.board}:{job.job_id or job.url}"
 
-    if unique_id in seen_data:
+    if unique_id in seen_data and not ignore_seen:
       skipped_seen += 1
       continue
 

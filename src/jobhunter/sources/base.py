@@ -14,11 +14,11 @@ class BaseSource(ABC):
 
   def __init__(self):
     super().__init__()
-    board_config = settings.boards.get(self.name, {})
-    if isinstance(board_config, dict):
-      self.enabled = board_config.get("enabled", True)
+    self.board_config = settings.boards.get(self.name, {})
+    if isinstance(self.board_config, dict):
+      self.enabled = self.board_config.get("enabled", True)
     else:
-      self.enabled = bool(board_config)
+      self.enabled = bool(self.board_config)
 
   @abstractmethod
   def fetch(self, slug: str = "", **kwargs) -> list[Job]:

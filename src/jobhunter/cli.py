@@ -11,17 +11,21 @@ app = typer.Typer(
   context_settings={"help_option_names": ["-h", "--help"]},
 )
 
+SourceOpt = typer.Option(None, "--source", "-s", help="Specific source to fetch from")
+NoAggOpt = typer.Option(False, "--no-aggregators", help="Skip aggregator boards")
+IgnoreSeenOpt = typer.Option(False, "--ignore-seen", help="Ignore seen jobs and fetch all")
+
 
 @app.command("run", help="Run the full pipeline (fetch -> evaluate -> send)")
-def run_all(no_boards: bool = typer.Option(False, "--no-boards", help="Skip aggregator boards")):
-  fetch.main(no_boards=no_boards)
+def run_all(source: str | None = SourceOpt, no_aggregators: bool = NoAggOpt, ignore_seen: bool = IgnoreSeenOpt):
+  fetch.main(source_name=source, no_aggregators=no_aggregators, ignore_seen=ignore_seen)
   evaluate.main()
   send.main()
 
 
 @app.command("fetch", help="Fetch jobs from configured boards")
-def fetch_jobs(no_boards: bool = typer.Option(False, "--no-boards", help="Skip aggregator boards")):
-  fetch.main(no_boards=no_boards)
+def fetch_jobs(source: str | None = SourceOpt, no_aggregators: bool = NoAggOpt, ignore_seen: bool = IgnoreSeenOpt):
+  fetch.main(source_name=source, no_aggregators=no_aggregators, ignore_seen=ignore_seen)
 
 
 @app.command("evaluate", help="Score and evaluate candidates")
@@ -39,7 +43,7 @@ def discover_boards():
   discover.main()
 
 
-@app.command("prune", help="Prune expired jobs from state/seen files")
+@app.command("prune", help="Prune broken company entries from config/config.json")
 def prune_state():
   prune.main()
 
