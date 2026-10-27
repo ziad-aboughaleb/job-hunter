@@ -1,3 +1,5 @@
+import re
+
 import httpx
 
 from jobhunter.core.http import fetch_json
@@ -11,7 +13,8 @@ logger = get_logger(__name__)
 
 class Source(BaseSource):
   name = "ashby"
-  domains = ["ashbyhq.com"]
+  domains = ["jobs.ashbyhq.com"]
+  url_patterns = [re.compile(r"(?://|www\.)(?P<slug>[^/.]+)\.ashbyhq\.com"), re.compile(r"ashbyhq\.com/(?P<slug>[^/]+)")]
 
   def fetch(self, slug: str = "", **kwargs) -> list[Job]:
     """Fetches job listings from a specific company's Ashby API."""

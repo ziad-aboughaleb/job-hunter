@@ -1,7 +1,10 @@
 import logging
 from pathlib import Path
 
+from rich.console import Console
 from rich.logging import RichHandler
+
+console = Console()
 
 
 def setup_logging(level: str = "INFO", log_file: str = "logs/jobhunter.log") -> None:
@@ -12,6 +15,7 @@ def setup_logging(level: str = "INFO", log_file: str = "logs/jobhunter.log") -> 
   log_path.parent.mkdir(parents=True, exist_ok=True)
 
   console_handler = RichHandler(
+    console=console,
     rich_tracebacks=True,
     tracebacks_show_locals=False,
     markup=True,
@@ -34,7 +38,7 @@ def setup_logging(level: str = "INFO", log_file: str = "logs/jobhunter.log") -> 
     force=True,
   )
 
-  for noisy_logger in ("httpx", "httpcore", "urllib3"):
+  for noisy_logger in ("ddgs", "primp", "httpx", "httpcore", "urllib3"):
     logging.getLogger(noisy_logger).setLevel(logging.WARNING)
 
 

@@ -39,6 +39,7 @@ def fetch_json(
 
     except httpx.HTTPError as e:
       last_error = e
+
       if not _should_retry(e):
         raise
 
@@ -66,6 +67,7 @@ def fetch_url(url: str, headers: dict | None = None, timeout: float = 15.0, retr
 
     except httpx.HTTPError as e:
       last_error = e
+
       if not _should_retry(e):
         raise
 

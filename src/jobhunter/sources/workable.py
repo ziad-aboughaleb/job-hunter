@@ -1,3 +1,5 @@
+import re
+
 import httpx
 
 from jobhunter.core.http import fetch_json
@@ -11,7 +13,8 @@ logger = get_logger(__name__)
 
 class Source(BaseSource):
   name = "workable"
-  domains = ["workable.com"]
+  domains = ["apply.workable.com"]
+  url_patterns = [re.compile(r"apply\.workable\.com/(?P<slug>[a-zA-Z0-9_-]+)")]
 
   @staticmethod
   def _parse_location(item: dict, location_obj: dict) -> str:

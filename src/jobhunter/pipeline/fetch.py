@@ -1,23 +1,23 @@
 import concurrent.futures
 
-from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 from rich.table import Column
 
 from jobhunter.core.filters import passes_all_filters
-from jobhunter.core.logger import get_logger
+from jobhunter.core.logger import console, get_logger
 from jobhunter.core.settings import settings
 from jobhunter.core.state import load_candidates, load_seen, save_candidates
 from jobhunter.models import Job
-from jobhunter.sources import SOURCES, execute_scraper
+from jobhunter.sources import SOURCES
 
 logger = get_logger(__name__, log_to_console=False)
-console = Console()
 
 
 def main(source_name: str | None, no_aggregators: bool = False, ignore_seen: bool = False):
   """Fetches jobs from all configured sources and saves new candidates to the state."""
   logger.info("Starting job fetch pipeline...")
+  console.print("[bold cyan]Fetching jobs from configured sources...[/bold cyan]")
+
   tasks = []
 
   for name, source in SOURCES.items():
@@ -53,7 +53,7 @@ def main(source_name: str | None, no_aggregators: bool = False, ignore_seen: boo
     fetch_task = progress.add_task("[cyan]Starting fetch...", total=len(tasks))
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-      future_to_name = {executor.submit(execute_scraper, source, slug): f"{source.name}:{slug}" if slug else source.name for source, slug in tasks}
+      future_to_name = {executor.submit(source.execute_scraper, slug): f"{source.name}:{slug}" if slug else source.name for source, slug in tasks}
 
       for future in concurrent.futures.as_completed(future_to_name):
         name = future_to_name[future]

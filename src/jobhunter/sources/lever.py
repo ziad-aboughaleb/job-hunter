@@ -1,3 +1,4 @@
+import re
 from datetime import UTC, datetime
 
 import httpx
@@ -14,6 +15,7 @@ logger = get_logger(__name__)
 class Source(BaseSource):
   name = "lever"
   domains = ["lever.co"]
+  url_patterns = [re.compile(r"lever\.co/(?P<slug>[^/]+)")]
 
   def fetch(self, slug: str = "", **kwargs) -> list[Job]:
     """Fetches job listings from a specific company's Lever API."""
