@@ -5,16 +5,19 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn
 from rich.table import Column
 
 from jobhunter.core.filters import passes_all_filters
+from jobhunter.core.logger import get_logger
 from jobhunter.core.settings import settings
 from jobhunter.core.state import load_candidates, load_seen, save_candidates
 from jobhunter.models import Job
 from jobhunter.sources import SOURCES, execute_scraper
 
+logger = get_logger(__name__, log_to_console=False)
 console = Console()
 
 
 def main(source_name: str | None, no_aggregators: bool = False, ignore_seen: bool = False):
   """Fetches jobs from all configured sources and saves new candidates to the state."""
+  logger.info("Starting job fetch pipeline...")
   tasks = []
 
   for name, source in SOURCES.items():
@@ -31,6 +34,7 @@ def main(source_name: str | None, no_aggregators: bool = False, ignore_seen: boo
         tasks.append((source, slug))
 
   if not tasks:
+    logger.warning("No active sources/companies found to scrape.")
     console.print("[yellow]No active sources/companies found to scrape.[/yellow]")
     return
 
@@ -60,6 +64,7 @@ def main(source_name: str | None, no_aggregators: bool = False, ignore_seen: boo
 
           progress.update(fetch_task, advance=1, description=f"[cyan]Fetching... [dim](Finished {name})[/dim]")
         except Exception as e:
+          logger.exception(f"Error fetching {name}: {e}")
           progress.console.print(f"[red]Error fetching {name}: {e}[/red]")
           progress.update(fetch_task, advance=1)
 
@@ -96,7 +101,14 @@ def main(source_name: str | None, no_aggregators: bool = False, ignore_seen: boo
     candidates.extend(new_passing_jobs)
     save_candidates(candidates)
 
-  # print summary
+  logger.info(
+    f"Fetch summary — Raw: {len(fetched_jobs)}, "
+    f"Skipped Seen: {skipped_seen}, "
+    f"Skipped Pending: {skipped_pending}, "
+    f"Failed Filters: {skipped_filters}, "
+    f"New Candidates: {len(new_passing_jobs)}"
+  )
+
   console.print("\n[bold]Fetch Summary[/bold]")
   console.print("──────────────────────────────")
   console.print(f"Total raw jobs  : [cyan]{len(fetched_jobs)}[/cyan]")

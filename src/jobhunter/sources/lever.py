@@ -1,14 +1,14 @@
-import logging
 from datetime import UTC, datetime
 
 import httpx
 
 from jobhunter.core.http import fetch_json
+from jobhunter.core.logger import get_logger
 from jobhunter.core.textutil import clean_html, parse_date
 from jobhunter.models import Job
 from jobhunter.sources.base import BaseSource
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class Source(BaseSource):

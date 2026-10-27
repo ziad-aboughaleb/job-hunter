@@ -1,13 +1,13 @@
 import importlib
-import logging
 import pkgutil
 from pathlib import Path
 
 import httpx
 
+from jobhunter.core.logger import get_logger
 from jobhunter.models import Job
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 SOURCES = {}
 
