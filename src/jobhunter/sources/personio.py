@@ -1,9 +1,14 @@
+import logging
 import xml.etree.ElementTree as ET
+
+import httpx
 
 from jobhunter.core.http import fetch_url
 from jobhunter.core.textutil import clean_html, parse_date
 from jobhunter.models import Job
 from jobhunter.sources.base import BaseSource
+
+logger = logging.getLogger(__name__)
 
 
 class Source(BaseSource):
@@ -13,26 +18,38 @@ class Source(BaseSource):
 
   def fetch(self, slug: str = "", **kwargs) -> list[Job]:
     """Fetches job listings from a specific company's Personio XML feed."""
+    if not slug:
+      raise ValueError(f"A company slug must be provided to fetch {self.name} jobs.")
+
     response = None
     base_url = ""
     headers = {"Accept": "application/xml,text/xml,*/*"}
+    last_status_error = None
 
     for domain in ("de", "com"):
       base_url = f"https://{slug}.jobs.personio.{domain}"
       url = f"{base_url}/xml?language=en"
 
-      response = fetch_url(url, headers=headers)
-      if response:
+      try:
+        response = fetch_url(url, headers=headers)
         break
+      except httpx.HTTPStatusError as e:
+        last_status_error = e
+        if e.response.status_code == 404:
+          continue
+        raise
+      except (httpx.HTTPError, ValueError) as e:
+        raise RuntimeError(f"Failed to fetch {self.name} jobs for {slug}: {e}") from e
 
     if not response:
-      print(f"Failed to fetch {slug} from Personio (tried .de and .com)")
+      if last_status_error:
+        raise last_status_error
       return []
 
     try:
       root = ET.fromstring(response.text)
     except ET.ParseError as exc:
-      print(f"Failed to parse XML for {slug} from Personio: {exc}")
+      logger.error(f"Failed to parse XML for {slug} from {self.name}: {exc}")
       return []
 
     jobs = []
@@ -42,45 +59,55 @@ class Source(BaseSource):
       def field(tag: str, pos=position) -> str:
         return (pos.findtext(tag) or "").strip()
 
-      offices = [field("office")] + [(o.text or "").strip() for o in position.findall("additionalOffices/office")]
-      location = ", ".join(dict.fromkeys(o for o in offices if o))
+      job_id = str(field("id") or "")
+      title = str(field("name") or "")
+      job_url = str(f"{base_url}/job/{job_id}" if job_id else "")
 
-      sections = []
-      for block in position.findall("jobDescriptions/jobDescription"):
-        name = (block.findtext("name") or "").strip()
-        value = clean_html(block.findtext("value"))
-        if value:
-          sections.append(f"{name}\n{value}" if name else value)
+      if not all([job_id, title, job_url]):
+        logger.warning(f"Skipping {self.name} item with missing required fields: {position.attrib}")
+        continue
 
-      facts = [
-        f"{label}: {field(tag)}"
-        for label, tag in (
-          ("Seniority", "seniority"),
-          ("Years of experience", "yearsOfExperience"),
-          ("Employment", "employmentType"),
-          ("Schedule", "schedule"),
+      try:
+        offices = [field("office")] + [(o.text or "").strip() for o in position.findall("additionalOffices/office")]
+        location = ", ".join(dict.fromkeys(o for o in offices if o))
+
+        sections = []
+        for block in position.findall("jobDescriptions/jobDescription"):
+          name = (block.findtext("name") or "").strip()
+          value = clean_html(block.findtext("value"))
+          if value:
+            sections.append(f"{name}\n{value}" if name else value)
+
+        facts = [
+          f"{label}: {field(tag)}"
+          for label, tag in (
+            ("Seniority", "seniority"),
+            ("Years of experience", "yearsOfExperience"),
+            ("Employment", "employmentType"),
+            ("Schedule", "schedule"),
+          )
+          if field(tag)
+        ]
+
+        description = ("\n".join(facts) + "\n\n" if facts else "") + "\n\n".join(sections)
+
+        jobs.append(
+          Job(
+            source=self.name,
+            board=slug,
+            company=field("subcompany") or slug.replace("-", " ").title(),
+            job_id=job_id,
+            title=title,
+            url=job_url,
+            location=location,
+            remote=None,
+            posted=parse_date(field("createdAt")),
+            description=description,
+          )
         )
-        if field(tag)
-      ]
 
-      description = ("\n".join(facts) + "\n\n" if facts else "") + "\n\n".join(sections)
-
-      title = field("name")
-      job_id = field("id")
-
-      jobs.append(
-        Job(
-          source=self.name,
-          board=slug,
-          company=field("subcompany") or slug.replace("-", " ").title(),
-          job_id=job_id,
-          title=title,
-          url=f"{base_url}/job/{job_id}" if job_id else "",
-          location=location,
-          remote=None,
-          posted=parse_date(field("createdAt")),
-          description=description,
-        )
-      )
+      except Exception as e:
+        logger.error(f"Error parsing {self.name} job {job_id}: {e}")
+        continue
 
     return jobs

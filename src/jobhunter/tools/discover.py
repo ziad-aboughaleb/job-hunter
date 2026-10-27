@@ -7,42 +7,77 @@ from rich.console import Console
 from jobhunter.core.settings import settings
 from jobhunter.core.state import load_config, save_config
 from jobhunter.sources import SOURCES
+from jobhunter.sources.base import SlugStatus
 
 console = Console()
 
+# Blacklist of common paths that are NOT company slugs
+INVALID_SLUGS = {
+  "blog",
+  "blogs",
+  "guides",
+  "docs",
+  "html",
+  "role",
+  "i",
+  "p",
+  "j",
+  "embed",
+  "career-advice",
+  "careers",
+  "jobs",
+  "about",
+  "support",
+  "www",
+  "pricing",
+  "login",
+  "signup",
+  "resources",
+  "contact",
+  "legal",
+  "privacy",
+  "terms",
+  "hire",
+  "freelance-jobs",
+  "what-is",
+  "software-engineer-full-stack",
+  "front-end-vs-back-end-vs-full-stack-2",
+  "gfg-academy",
+}
+
 
 def extract_slug(url: str, source_name: str) -> str | None:
-  """Extracts a company slug from a given URL based on the source's URL structure."""
-  try:
-    parsed = urlparse(url)
-    path_parts = [p for p in parsed.path.split("/") if p]
+  source = SOURCES.get(source_name)
+  if not url or not source or not getattr(source, "domains", None):
+    return None
 
-    source = SOURCES.get(source_name)
-    is_subdomain = getattr(source, "is_subdomain", False)
-
-    if is_subdomain:
-      host_parts = parsed.netloc.split(".")
-      if len(host_parts) >= 3:
-        slug = host_parts[0]
-        if slug not in ["www", "jobs", "careers"]:
-          return slug
-      return None
-
-    if path_parts:
-      slug = path_parts[0]
-      if slug.lower() not in ["jobs", "careers", "p", "j", "embed"]:
-        return slug
-
-  except Exception:
-    pass
-
+  host = (urlparse(url).hostname or "").lower()
+  for domain in source.domains:
+    if host == domain or host.endswith(f".{domain}"):
+      if getattr(source, "is_subdomain", False):
+        prefix = host[: -len(domain)].rstrip(".")
+        slug = prefix.split(".")[0] if prefix else None
+      else:
+        parts = [p for p in urlparse(url).path.split("/") if p]
+        slug = parts[0].lower() if parts else None
+      return slug if slug and slug not in INVALID_SLUGS else None
   return None
 
 
 def main(write: bool = False, source_name: str | None = None, titles_override: str | None = None):
   """Discovers new company slugs by searching for target titles on configured sources."""
+  if source_name:
+    if source_name not in SOURCES:
+      console.print(f"[red]Error: Source '{source_name}' is not configured in your scrapers.[/red]")
+      return
+
+    source = SOURCES[source_name]
+    if getattr(source, "is_aggregator", False):
+      console.print(f"[yellow]Notice: '{source_name}' is an aggregator. Discovery is only for finding ATS company slugs.[/yellow]")
+      return
+
   if titles_override:
-    titles = titles_override.split(",")
+    titles = [t.strip() for t in titles_override.split(",")]
   else:
     titles = settings.filters.title_include
     if not titles:
@@ -62,35 +97,54 @@ def main(write: bool = False, source_name: str | None = None, titles_override: s
       if getattr(source, "is_aggregator", False) or not getattr(source, "domains", None):
         continue
 
-      domain = source.domains[0]
-      query = f"site:{domain} {titles_query}"
+      for domain in source.domains:
+        query = f"site:{domain} {titles_query}"
 
-      console.print(f"\n[cyan]Searching [bold]{name}[/bold][/cyan] ([dim]{query}[/dim])...")
+        console.print(f"\n[cyan]Searching [bold]{name}[/bold][/cyan] ([dim]{query}[/dim])...")
 
-      try:
-        results = ddgs.text(query, max_results=30)
+        results = []
 
-        added_count = 0
+        try:
+          for attempt in range(3):
+            try:
+              results = list(ddgs.text(query, max_results=30))
+              break
+            except Exception:
+              if attempt == 2:
+                raise
+              time.sleep(4 * (attempt + 1))
 
-        for result in results:
-          url = result.get("href", "")
-          slug = extract_slug(url, name)
+          added_count = 0
+          known = 0
 
-          if slug:
+          for result in results:
+            url = result.get("href", "")
+            slug = extract_slug(url, name)
+
+            if not slug:
+              if url and any((urlparse(url).hostname or "").endswith(d) for d in source.domains):
+                console.print(f"  [dim yellow]⚠ Ignored URL: {url}[/dim yellow]")
+              continue
+
             existing = settings.companies.get(name, [])
-            if slug not in existing and slug not in new_slugs.get(name, set()):
+            if slug in existing and slug in new_slugs.get(name, set()):
+              known += 1
+              continue
+
+            status = source.validate_slug(slug)
+            if status is SlugStatus.VALID:
               new_slugs.setdefault(name, set()).add(slug)
               added_count += 1
               found_any = True
-          else:
-            console.print(f"\n[dim yellow]⚠ Unrecognized URL format: {url}[/dim yellow]")
+            elif status is SlugStatus.INVALID:
+              console.print(f"  [dim red]✖ Not a real board: {slug}[/dim red]")
+            else:
+              console.print(f"  [dim yellow]? Couldn't verify: {slug}[/dim yellow]")
 
-        console.print(f" ↳ Found {added_count} new slugs.")
+          console.print(f"  ↳ {added_count} new, {known} already known.")
 
-      except Exception as e:
-        console.print(f"[red] ↳ Error searching {name}: {e}[/red]")
-
-      time.sleep(2)
+        except Exception as e:
+          console.print(f"[red]  ↳ Error searching {name}: {e}[/red]")
 
   if not found_any:
     console.print("\n[yellow]No new company slugs found.[/yellow]")

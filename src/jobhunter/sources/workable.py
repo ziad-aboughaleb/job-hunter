@@ -1,7 +1,13 @@
+import logging
+
+import httpx
+
 from jobhunter.core.http import fetch_json
 from jobhunter.core.textutil import clean_html, parse_date
 from jobhunter.models import Job
 from jobhunter.sources.base import BaseSource
+
+logger = logging.getLogger(__name__)
 
 
 class Source(BaseSource):
@@ -31,31 +37,58 @@ class Source(BaseSource):
 
   def fetch(self, slug: str = "", **kwargs) -> list[Job]:
     """Fetches job listings from a specific company's Workable widget API."""
+    if not slug:
+      raise ValueError(f"A company slug must be provided to fetch {self.name} jobs.")
+
     url = f"https://apply.workable.com/api/v1/widget/accounts/{slug}?details=true"
 
-    data = fetch_json(url, expected_type=dict)
-    if not data:
+    try:
+      data = fetch_json(url, expected_type=dict)
+    except httpx.HTTPStatusError:
+      raise
+    except (httpx.HTTPError, ValueError) as e:
+      raise RuntimeError(f"Failed to fetch {self.name} jobs for {slug}: {e}") from e
+
+    if not isinstance(data, dict):
       return []
 
     jobs = []
 
     for item in data.get("jobs", []):
-      location_obj = item.get("location") if isinstance(item.get("location"), dict) else {}
-      is_remote = bool(item.get("telecommuting")) or bool(location_obj.get("telecommuting"))
+      if not isinstance(item, dict):
+        logger.warning(f"Skipping unexpected item format from {self.name}: {type(item)}")
+        continue
 
-      jobs.append(
-        Job(
-          source=self.name,
-          board=slug,
-          company=data.get("name") or slug.replace("-", " ").title(),
-          job_id=str(item.get("shortcode") or item.get("id") or item.get("code") or ""),
-          title=item.get("title") or "",
-          url=item.get("url") or item.get("shortlink") or item.get("application_url") or "",
-          location=self._parse_location(item, location_obj),
-          remote=True if is_remote else None,
-          description=clean_html(item.get("description") or item.get("full_description") or ""),
-          posted=parse_date(item.get("published_on") or item.get("created_at")),
+      job_id = str(item.get("shortcode") or item.get("id") or item.get("code") or "")
+      title = str(item.get("title") or "")
+      job_url = str(item.get("url") or item.get("shortlink") or item.get("application_url") or "")
+
+      if not all([job_id, title, job_url]):
+        logger.warning(f"Skipping {self.name} item with missing required fields: {item}")
+        continue
+
+      try:
+        loc_val = item.get("location")
+        location_obj = loc_val if isinstance(loc_val, dict) else {}
+        is_remote = bool(item.get("telecommuting")) or bool(location_obj.get("telecommuting"))
+
+        jobs.append(
+          Job(
+            source=self.name,
+            board=slug,
+            company=data.get("name") or slug.replace("-", " ").title(),
+            job_id=job_id,
+            title=title,
+            url=job_url,
+            location=self._parse_location(item, location_obj),
+            remote=True if is_remote else None,
+            description=clean_html(item.get("description") or item.get("full_description") or ""),
+            posted=parse_date(item.get("published_on") or item.get("created_at")),
+          )
         )
-      )
+
+      except Exception as e:
+        logger.error(f"Error parsing {self.name} job {job_id}: {e}")
+        continue
 
     return jobs
