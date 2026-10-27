@@ -3,11 +3,11 @@ import concurrent.futures
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 from rich.table import Column
 
-from jobhunter.core.filters import passes_all_filters
+from jobhunter.core.filters import count_stack_hits, passes_all_filters
 from jobhunter.core.logger import console, get_logger
 from jobhunter.core.settings import settings
-from jobhunter.core.state import load_candidates, load_seen, save_candidates
-from jobhunter.models import Job
+from jobhunter.core.state import load_seen, save_candidates
+from jobhunter.models import Candidate, Job
 from jobhunter.sources import SOURCES
 
 logger = get_logger(__name__, log_to_console=False)
@@ -71,12 +71,10 @@ def main(source_name: str | None, no_aggregators: bool = False, ignore_seen: boo
     progress.update(fetch_task, description="[bold green]Fetch complete![/bold green]")
 
   seen_data = load_seen()
-  candidates = load_candidates()
-  pending_ids = {f"{c.source}:{c.board}:{c.job_id or c.url}" for c in candidates}
+  save_candidates([])
 
   new_passing_jobs = []
   skipped_seen = 0
-  skipped_pending = 0
   skipped_filters = 0
 
   for job in fetched_jobs:
@@ -86,34 +84,60 @@ def main(source_name: str | None, no_aggregators: bool = False, ignore_seen: boo
       skipped_seen += 1
       continue
 
-    if unique_id in pending_ids:
-      skipped_pending += 1
-      continue
-
-    pending_ids.add(unique_id)
-
     if passes_all_filters(job):
       new_passing_jobs.append(job)
     else:
       skipped_filters += 1
 
-  if new_passing_jobs:
-    candidates.extend(new_passing_jobs)
-    save_candidates(candidates)
+  priority_companies = {c.lower() for c in settings.filters.company_priority}
+
+  scored_jobs = [(job, (job.company or "").lower() in priority_companies, count_stack_hits(job)) for job in new_passing_jobs]
+
+  scored_jobs.sort(key=lambda item: (item[1], item[2]), reverse=True)
+
+  sorted_passing_jobs = [item[0] for item in scored_jobs]
+
+  max_candidates = settings.limits.max_candidates_per_run
+  final_passing_jobs = []
+  non_priority_count = 0
+
+  for job in sorted_passing_jobs:
+    is_priority = (job.company or "").lower() in priority_companies
+    if is_priority:
+      final_passing_jobs.append(job)
+    else:
+      if non_priority_count < max_candidates:
+        final_passing_jobs.append(job)
+        non_priority_count += 1
+
+  cut_over_cap = len(sorted_passing_jobs) - len(final_passing_jobs)
+
+  final_candidates = []
+
+  for i, job in enumerate(final_passing_jobs, start=1):
+    ref = f"J{i}"
+    is_priority = (job.company or "").lower() in priority_companies
+    hits = count_stack_hits(job)
+
+    candidate = Candidate.from_job(job, ref=ref, priority=is_priority, stack_hits=hits)
+    final_candidates.append(candidate)
+
+  if final_candidates:
+    save_candidates(final_candidates)
 
   logger.info(
     f"Fetch summary — Raw: {len(fetched_jobs)}, "
     f"Skipped Seen: {skipped_seen}, "
-    f"Skipped Pending: {skipped_pending}, "
     f"Failed Filters: {skipped_filters}, "
-    f"New Candidates: {len(new_passing_jobs)}"
+    f"Cut Over Cap: {cut_over_cap}, "
+    f"New Candidates: {len(final_candidates)}"
   )
 
   console.print("\n[bold]Fetch Summary[/bold]")
   console.print("──────────────────────────────")
   console.print(f"Total raw jobs  : [cyan]{len(fetched_jobs)}[/cyan]")
   console.print(f"Skipped (sent)  : [yellow]{skipped_seen}[/yellow]")
-  console.print(f"Skipped (pend)  : [yellow]{skipped_pending}[/yellow]")
   console.print(f"Failed filters  : [magenta]{skipped_filters}[/magenta]")
-  console.print(f"New candidates  : [bold green]{len(new_passing_jobs)}[/bold green]")
+  console.print(f"Cut over cap    : [yellow]{cut_over_cap}[/yellow]")
+  console.print(f"New candidates  : [bold green]{len(final_candidates)}[/bold green]")
   console.print("──────────────────────────────\n")

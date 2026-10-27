@@ -7,14 +7,15 @@ from jobhunter.models import Job
 
 def has_word(keyword: str, text: str) -> bool:
   """Checks if a keyword exists in the text as a whole word, ignoring case."""
+  if not text or not keyword:
+    return False
   pattern = rf"(?<![a-z0-9]){re.escape(keyword.lower())}(?![a-z0-9])"
-
   return bool(re.search(pattern, text.lower()))
 
 
 def is_valid_title(job: Job) -> bool:
   """Checks if the job title passes the include/exclude filters."""
-  title = job.title.lower()
+  title = (job.title or "").lower()
   filters = settings.filters
 
   return not (
@@ -25,20 +26,23 @@ def is_valid_title(job: Job) -> bool:
 
 def is_valid_company(job: Job) -> bool:
   """Checks if the job company passes the exclude filters."""
-  company = job.company.lower()
-
+  company = (job.company or "").lower()
   return not any(has_word(ex, company) for ex in settings.filters.company_exclude)
 
 
 def is_valid_location(job: Job) -> bool:
-  """Checks if the job location passes the include/exclude filters."""
-  location = job.location.lower()
+  """Checks location filters, giving absolute priority to location_allow_terms with inline conditions."""
+  location = (job.location or "").lower()
   filters = settings.filters
 
-  return not (
-    (filters.location_exclude_terms and any(has_word(ex, location) for ex in filters.location_exclude_terms))
-    or (filters.location_require_terms and not any(has_word(req, location) for req in filters.location_require_terms))
-  )
+  if filters.location_allow_terms and any(has_word(allow, location) for allow in filters.location_allow_terms):
+    return True
+  if filters.location_exclude_terms and any(has_word(ex, location) for ex in filters.location_exclude_terms):
+    return False
+  if filters.location_require_terms:
+    return any(has_word(req, location) for req in filters.location_require_terms)
+
+  return True
 
 
 def is_job_remote(job: Job) -> bool:
@@ -46,7 +50,7 @@ def is_job_remote(job: Job) -> bool:
   if job.remote is True:
     return True
 
-  search_text = f"{job.title} {job.location} {job.description}"
+  search_text = f"{job.title or ''} {job.location or ''} {job.description or ''}"
   return any(has_word(kw, search_text) for kw in settings.filters.remote_keywords)
 
 
@@ -63,14 +67,22 @@ def is_recent_enough(job: Job) -> bool:
     return True
 
 
+def count_stack_hits(job: Job) -> int:
+  """Counts how many stack keywords are present in the job title and description."""
+  filters = settings.filters
+  if not filters.stack_keywords:
+    return 0
+  search_text = f"{job.title or ''} {job.description or ''}"
+  return sum(1 for kw in filters.stack_keywords if has_word(kw, search_text))
+
+
 def has_required_stack(job: Job) -> bool:
   """Checks if the job description contains the required stack keywords."""
   filters = settings.filters
   if filters.min_stack_hits <= 0 or not filters.stack_keywords:
     return True
 
-  search_text = f"{job.title} {job.description}"
-  hits = sum(1 for kw in filters.stack_keywords if has_word(kw, search_text))
+  hits = count_stack_hits(job)
 
   return hits >= filters.min_stack_hits
 

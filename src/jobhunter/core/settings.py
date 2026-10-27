@@ -21,7 +21,7 @@ class FiltersConfig(BaseModel):
   company_priority: list[str] = []
   require_remote: bool = True
   remote_keywords: list[str] = ["remote", "wfh", "work from home", "anywhere", "telecommute", "fully remote", "100% remote"]
-  location_exclude_terms: list[str] = []
+  location_exclude_terms: list[str] = ["us only", "us-only", "united states only", "canada only", "uk only", "must reside in"]
   location_allow_terms: list[str] = []
   location_require_terms: list[str] = []
   max_age_days: int = 14
@@ -30,7 +30,6 @@ class FiltersConfig(BaseModel):
 class LimitsConfig(BaseModel):
   max_candidates_per_run: int = 30
   description_max_chars: int = 7000
-  max_messages: int = 15
   seen_retention_days: int = 90
   fetch_workers: int = 8
 

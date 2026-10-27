@@ -254,42 +254,20 @@
     "company_priority": [],
     "require_remote": true,
     "location_exclude_terms": [
-      "usa",
-      "united states",
       "us only",
       "us-only",
-      "canada",
-      "latam",
-      "americas",
-      "brazil",
-      "india",
-      "uk",
-      "united kingdom",
-      "portugal",
-      "netherlands",
-      "australia",
-      "new zealand",
-      "mexico",
-      "argentina",
-      "uae",
-      "germany",
-      "france",
-      "spain"
+      "united states only",
+      "canada only",
+      "uk only",
+      "must reside in"
     ],
-    "location_allow_terms": [
-      "worldwide",
-      "emea",
-      "anywhere",
-      "remote",
-      "egypt"
-    ],
+    "location_allow_terms": [],
     "location_require_terms": [],
     "max_age_days": 14
   },
   "limits": {
     "max_candidates_per_run": 30,
     "description_max_chars": 7000,
-    "max_messages": 15,
     "seen_retention_days": 90,
     "fetch_workers": 8
   },
