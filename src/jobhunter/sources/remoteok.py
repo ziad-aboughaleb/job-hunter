@@ -36,6 +36,9 @@ class Source(BaseSource):
         logger.warning(f"Skipping unexpected item format from {self.name}: {type(item)}")
         continue
 
+      if "legal" in item:
+        continue
+
       job_id = str(item.get("id") or item.get("slug") or "")
       title = str(item.get("position") or "")
       job_url = str(item.get("url") or item.get("apply_url") or "")
