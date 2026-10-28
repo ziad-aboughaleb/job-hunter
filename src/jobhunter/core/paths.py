@@ -7,6 +7,10 @@ from typing import Any
 
 from filelock import FileLock
 
+from jobhunter.core.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 def get_project_root() -> Path:
   """Returns the root directory of the project by searching for 'pyproject.toml'."""
@@ -36,7 +40,11 @@ def write(path_from_root: str | Path, data: Any, timeout: int = 10):
     path = ROOT_PATH / path
 
   directory = path.parent
-  directory.mkdir(parents=True, exist_ok=True)
+  try:
+    directory.mkdir(parents=True, exist_ok=True)
+  except Exception as e:
+    logger.error(f"Failed to create directory {directory}: {e}")
+    raise
 
   # Universal Data Conversion
   if isinstance(data, bytes):
@@ -53,25 +61,34 @@ def write(path_from_root: str | Path, data: Any, timeout: int = 10):
   # Acquire the Lock
   lock_path = path.with_suffix(path.suffix + ".lock")
 
-  with FileLock(str(lock_path), timeout=timeout):
-    fd, temp_path = tempfile.mkstemp(dir=directory, prefix=".tmp_")
+  try:
+    with FileLock(str(lock_path), timeout=timeout):
+      fd, temp_path = tempfile.mkstemp(dir=directory, prefix=".tmp_")
 
-    try:
-      with os.fdopen(fd, "wb") as f:
-        f.write(raw_bytes)
-        f.flush()
+      try:
+        with os.fdopen(fd, "wb") as f:
+          f.write(raw_bytes)
+          f.flush()
 
-        if hasattr(os, "fdatasync"):
-          os.fdatasync(f.fileno())
-        else:
-          os.fsync(f.fileno())
+          if hasattr(os, "fdatasync"):
+            os.fdatasync(f.fileno())
+          else:
+            os.fsync(f.fileno())
 
-      os.replace(temp_path, path)
+        os.replace(temp_path, path)
 
-    except Exception as e:
-      if os.path.exists(temp_path):
-        os.remove(temp_path)
-      raise e
+      except Exception as e:
+        logger.error(f"Failed to write atomically to {path}: {e}")
+        if os.path.exists(temp_path):
+          os.remove(temp_path)
+        raise
+
+  except Exception as e:
+    logger.error(f"Write operation failed for {path} (Lock or IO Error): {e}")
+    raise
+  finally:
+    with contextlib.suppress(OSError):
+      lock_path.unlink()
 
 
 def read[T: (dict, list, str)](
@@ -87,11 +104,21 @@ def read[T: (dict, list, str)](
     text = path.read_text(encoding="utf-8")
   except FileNotFoundError:
     return expected_type()
+  except Exception as e:
+    logger.error(f"Failed to read file {path}: {e}")
+    raise
 
   if expected_type in (dict, list):
-    data = json.loads(text)
+    try:
+      data = json.loads(text)
+    except json.JSONDecodeError as e:
+      logger.error(f"JSON corruption detected in {path}: {e}")
+      raise
+
     if not isinstance(data, expected_type):
+      logger.error(f"Type mismatch in {path}: Expected {expected_type.__name__}, got {type(data).__name__}")
       raise TypeError(f"Expected {expected_type.__name__}, got {type(data).__name__}")
+
     return data  # type: ignore[return-value]
 
   return text  # type: ignore[return-value]
@@ -103,5 +130,10 @@ def delete(path_from_root: str | Path):
   if not path.is_absolute():
     path = ROOT_PATH / path
 
-  with contextlib.suppress(FileNotFoundError):
+  try:
     path.unlink()
+  except FileNotFoundError:
+    pass  # Already deleted/doesn't exist, which is fine
+  except Exception as e:
+    logger.error(f"Failed to delete file {path}: {e}")
+    raise

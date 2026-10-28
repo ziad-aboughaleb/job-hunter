@@ -56,8 +56,8 @@ class Source(BaseSource):
             url=job_url,
             location=item.get("candidate_required_location") or "Remote",
             remote=True,
-            description=clean_html(item.get("description", "")),
             posted=parse_date(item.get("publication_date")),
+            description=clean_html(item.get("description", "")),
           )
         )
 

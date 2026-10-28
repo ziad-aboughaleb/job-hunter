@@ -3,7 +3,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from .paths import CONFIG_PATH, get_project_root, read
+from .paths import get_project_root, read
 
 
 class ProfileConfig(BaseModel):
@@ -83,7 +83,7 @@ def load_settings() -> Settings:
   config_dir = get_project_root() / "config"
 
   # Load JSON
-  config_data = read(CONFIG_PATH, dict)
+  config_data = read("config/config.json", dict)
 
   # Remove "_help"
   config_data.pop("_help", None)

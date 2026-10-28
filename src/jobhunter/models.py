@@ -12,28 +12,26 @@ class Job(BaseModel):
   url: str
   location: str
   remote: bool | None = None
-  description: str
   posted: str = ""
+  description: str
 
 
 class Candidate(BaseModel):
   ref: str = Field(..., description="Short reference ID (e.g., J1, J2)")
   uid: str = Field(..., description="Unique compound identifier: source:board:job_id_or_url")
-  company: str
-  title: str
-  url: str
-  location: str
-  posted: str = ""
-  remote: bool | None = None
-  description: str = ""
   priority: bool = False
   stack_hits: int = 0
   status: str = Field(default="pending", description="Pipeline status: pending, saved, applied, rejected")
-
-  # Optional metadata or source tracking if needed
   source: str = ""
   board: str = ""
+  company: str
   job_id: str = ""
+  title: str
+  url: str
+  location: str
+  remote: bool | None = None
+  posted: str = ""
+  description: str = ""
 
   @classmethod
   def from_job(cls, job: Job, ref: str, priority: bool, stack_hits: int) -> Candidate:
@@ -46,18 +44,18 @@ class Candidate(BaseModel):
     return cls(
       ref=ref,
       uid=uid,
-      company=job.company,
-      title=job.title,
-      url=job.url,
-      location=job.location,
-      posted=job.posted,
-      remote=job.remote,
       priority=priority,
       stack_hits=stack_hits,
       status="pending",
       source=job.source,
       board=job.board,
+      company=job.company,
       job_id=job.job_id,
+      title=job.title,
+      url=job.url,
+      location=job.location,
+      remote=job.remote,
+      posted=job.posted,
       description=truncated_description,
     )
 

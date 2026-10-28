@@ -1,5 +1,6 @@
 import time
 from collections import defaultdict
+from typing import Any
 
 from ddgs import DDGS
 
@@ -73,61 +74,106 @@ def search_with_retries(query: str, retries: int = 3, backoff: float = 1.5) -> l
     for attempt in range(retries):
       try:
         return list(ddgs.text(query, max_results=30))
-
       except Exception as e:
         last_error = e
-
         if "No results found" in str(e):
           return []
-
         if attempt < retries - 1:
           time.sleep(backoff * (2**attempt))
 
   raise RuntimeError(f"Failed to fetch DDGS query '{query}' after {retries} attempts.") from last_error
 
 
-def main(write_flag: bool = False, source_name: str | None = None, titles_override: str | None = None):
-  """Discovers new company slugs by searching for target titles on configured sources."""
-  logger.info("Starting discovery run...")
-  console.print("[bold cyan]Discovering new company slugs from configured sources...[/bold cyan]")
+def get_target_titles(titles_override: str | None) -> list[str]:
+  """Determines which job titles to search for based on CLI overrides or config."""
+  logger.info("Resolving target titles for discovery...")
+
+  titles = [t.strip() for t in titles_override.split(",")] if titles_override else settings.filters.title_include
+
+  if not titles:
+    logger.warning("No target titles found in config.json or override.")
+    console.print("[red]No target titles found in config.json filters.title_include.[/red]")
+    return []
+
+  target_titles = titles[:QUERY_LIMIT]
+  logger.info(f"Target titles resolved: {', '.join(target_titles)}")
+  console.print(f"[dim]Target titles for discovery: {', '.join(target_titles)}[/dim]")
+
+  return target_titles
+
+
+def get_active_sources(source_name: str | None) -> dict[str, Any]:
+  """Filters the configured sources for discovery suitability."""
+  logger.info("Filtering valid sources for discovery...")
+  active_sources = {}
 
   if source_name:
     if source_name not in SOURCES:
-      logger.error(f"Source '{source_name}' is not configured in your scrapers.")
+      logger.error(f"Source '{source_name}' is not configured.")
       console.print(f"[red]Error: Source '{source_name}' is not configured in your scrapers.[/red]")
-      return
+      return {}
 
     source = SOURCES[source_name]
-
     if getattr(source, "is_aggregator", False):
-      logger.warning(f"Source '{source_name}' is an aggregator. Discovery is only for ATS company slugs.")
+      logger.warning(f"Source '{source_name}' is an aggregator, skipping.")
       console.print(f"[yellow]Notice: '{source_name}' is an aggregator. Discovery is only for ATS company slugs.[/yellow]")
-      return
+      return {}
 
-  if titles_override:
-    titles = [t.strip() for t in titles_override.split(",")]
+    if getattr(source, "domains", None):
+      active_sources[source_name] = source
   else:
-    titles = settings.filters.title_include
-    if not titles:
-      logger.warning("No target titles found in config.json filters.title_include.")
-      console.print("[red]No target titles found in config.json filters.title_include.[/red]")
-      return
+    for name, source in SOURCES.items():
+      if not getattr(source, "is_aggregator", False) and getattr(source, "domains", None):
+        active_sources[name] = source
 
-  target_titles = titles[:QUERY_LIMIT]
+  logger.info(f"Found {len(active_sources)} valid sources for discovery.")
+  return active_sources
 
-  logger.info(f"Target titles for discovery: {', '.join(target_titles)}")
-  console.print(f"[dim]Target titles for discovery: {', '.join(target_titles)}[/dim]")
 
+def evaluate_search_results(source: Any, results: list[dict], existing_slugs: list[str], session_slugs: set[str]) -> tuple[int, int]:
+  """Processes raw search results, extracts slugs, and validates them via HTTP."""
+  added_count = 0
+  known_count = 0
+
+  for result in results:
+    url = result.get("href", "")
+    slug = source.extract_slug(url)
+
+    if not slug:
+      if url and any(domain in url for domain in source.domains):
+        logger.info(f"Ignored URL (no valid slug): {url}")
+        console.print(f"  [dim yellow]⚠ Ignored URL: {url}[/dim yellow]")
+      continue
+
+    if slug in HIGHLY_UNLIKELY_SLUGS:
+      continue
+
+    if slug in existing_slugs or slug in session_slugs:
+      known_count += 1
+      continue
+
+    status = source.validate_slug(slug)
+
+    if status is SlugStatus.VALID:
+      session_slugs.add(slug)
+      added_count += 1
+      logger.info(f"Found new valid slug for {source.name}: {slug}")
+    elif status is SlugStatus.INVALID:
+      console.print(f"  [dim red]✖ Not a real board: {slug}[/dim red]")
+    else:
+      console.print(f"  [dim yellow]? Couldn't verify: {slug}[/dim yellow]")
+
+  return added_count, known_count
+
+
+def execute_discovery_searches(active_sources: dict[str, Any], target_titles: list[str]) -> dict[str, set[str]]:
+  """Runs the search queries across all domains and topics, managing rate limits."""
+  logger.info("Executing search queries...")
   new_slugs: dict[str, set[str]] = defaultdict(set)
-  found_any = False
-  consecutive_errors = 0
 
-  for name, source in SOURCES.items():
-    if source_name and name != source_name:
-      continue
-
-    if getattr(source, "is_aggregator", False) or not getattr(source, "domains", None):
-      continue
+  for name, source in active_sources.items():
+    existing_slugs = settings.companies.get(name, [])
+    consecutive_errors = 0
 
     for domain in source.domains:
       for topic in target_titles:
@@ -135,8 +181,6 @@ def main(write_flag: bool = False, source_name: str | None = None, titles_overri
 
         logger.info(f"Searching {name} with query: {query}")
         console.print(f"\n[cyan]Searching [bold]{name}[/bold][/cyan] ([dim]{query}[/dim])...")
-
-        results = []
 
         try:
           results = search_with_retries(query, retries=RETRIES, backoff=BACKOFF)
@@ -147,41 +191,10 @@ def main(write_flag: bool = False, source_name: str | None = None, titles_overri
             console.print("  [dim]No results found.[/dim]")
             continue
 
-          added_count = 0
-          known = 0
+          added, known = evaluate_search_results(source, results, existing_slugs, new_slugs[name])
 
-          for result in results:
-            url = result.get("href", "")
-            slug = source.extract_slug(url)
-
-            if not slug:
-              if url and any(domain in url for domain in source.domains):
-                logger.info(f"Ignored URL (no valid slug): {url}")
-                console.print(f"  [dim yellow]⚠ Ignored URL: {url}[/dim yellow]")
-              continue
-
-            if slug in HIGHLY_UNLIKELY_SLUGS:
-              continue
-
-            existing = settings.companies.get(name, [])
-
-            if slug in existing or slug in new_slugs[name]:
-              known += 1
-              continue
-
-            status = source.validate_slug(slug)
-            if status is SlugStatus.VALID:
-              new_slugs[name].add(slug)
-              added_count += 1
-              found_any = True
-              logger.info(f"Found new valid slug for {name}: {slug}")
-            elif status is SlugStatus.INVALID:
-              console.print(f"  [dim red]✖ Not a real board: {slug}[/dim red]")
-            else:
-              console.print(f"  [dim yellow]? Couldn't verify: {slug}[/dim yellow]")
-
-          console.print(f"  ↳ {added_count} new, {known} already known.")
-          logger.info(f"Finished {name}: {added_count} new, {known} known.")
+          console.print(f"  ↳ {added} new, {known} already known.")
+          logger.info(f"Finished {name}: {added} new, {known} known.")
 
         except Exception as e:
           consecutive_errors += 1
@@ -189,7 +202,7 @@ def main(write_flag: bool = False, source_name: str | None = None, titles_overri
           console.print(f"[red]  ↳ Error searching {name}: {e}[/red]")
 
           if consecutive_errors >= 3:
-            logger.warning("Circuit breaker triggered: 3 consecutive search failures.")
+            logger.warning(f"Circuit breaker triggered for {name}: 3 consecutive failures.")
             console.print("\n[bold red]Stopping early: 3 consecutive searches failed (likely rate-limited).[/bold red]")
             break
 
@@ -198,7 +211,14 @@ def main(write_flag: bool = False, source_name: str | None = None, titles_overri
       if consecutive_errors >= 3:
         break
 
-  if not found_any:
+  return new_slugs
+
+
+def update_and_save_config(new_slugs: dict[str, set[str]], write_flag: bool):
+  """Merges newly discovered slugs with config.json and writes to disk if requested."""
+  logger.info("Processing discovery results...")
+
+  if not any(new_slugs.values()):
     logger.info("Discovery run completed. No new slugs found.")
     console.print("\n[yellow]No new company slugs found.[/yellow]")
     return
@@ -220,3 +240,26 @@ def main(write_flag: bool = False, source_name: str | None = None, titles_overri
     console.print("\n[bold green]Successfully saved to config.json![/bold green]")
   else:
     console.print("\n[yellow]Run with --write to save these slugs to your config.[/yellow]")
+
+
+def main(write_flag: bool = False, source_name: str | None = None, titles_override: str | None = None):
+  """Orchestrates the discovery pipeline."""
+  logger.info("Starting discovery pipeline...")
+  console.print("[bold cyan]Discovering new company slugs from configured sources...[/bold cyan]")
+
+  # 1. Setup
+  target_titles = get_target_titles(titles_override)
+  if not target_titles:
+    return
+
+  active_sources = get_active_sources(source_name)
+  if not active_sources:
+    return
+
+  # 2. Execute & Validate
+  new_slugs = execute_discovery_searches(active_sources, target_titles)
+
+  # 3. Finalize
+  update_and_save_config(new_slugs, write_flag)
+
+  logger.info("Discovery pipeline finished...")

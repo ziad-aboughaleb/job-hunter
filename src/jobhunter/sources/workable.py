@@ -84,8 +84,8 @@ class Source(BaseSource):
             url=job_url,
             location=self._parse_location(item, location_obj),
             remote=True if is_remote else None,
-            description=clean_html(item.get("description") or item.get("full_description") or ""),
             posted=parse_date(item.get("published_on") or item.get("created_at")),
+            description=clean_html(item.get("description") or item.get("full_description") or ""),
           )
         )
 

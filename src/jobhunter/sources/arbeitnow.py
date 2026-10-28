@@ -66,8 +66,8 @@ class Source(BaseSource):
               url=job_url,
               location=item.get("location") or "",
               remote=True if item.get("remote") else None,
-              description=clean_html(description),
               posted=posted,
+              description=clean_html(description),
             )
           )
 
