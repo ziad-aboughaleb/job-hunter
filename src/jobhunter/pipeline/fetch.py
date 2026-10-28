@@ -5,15 +5,15 @@ from rich.table import Column
 
 from jobhunter.core.filters import count_stack_hits, passes_all_filters
 from jobhunter.core.logger import console, get_logger
+from jobhunter.core.paths import delete, read, write
 from jobhunter.core.settings import settings
-from jobhunter.core.state import load_seen, save_candidates
 from jobhunter.models import Candidate, Job
 from jobhunter.sources import SOURCES
 
 logger = get_logger(__name__, log_to_console=False)
 
 
-def main(source_name: str | None, no_aggregators: bool = False, ignore_seen: bool = False):
+def main(source_name: str | None = None, no_aggregators: bool = False, ignore_seen: bool = False):
   """Fetches jobs from all configured sources and saves new candidates to the state."""
   logger.info("Starting job fetch pipeline...")
   console.print("[bold cyan]Fetching jobs from configured sources...[/bold cyan]")
@@ -70,8 +70,8 @@ def main(source_name: str | None, no_aggregators: bool = False, ignore_seen: boo
 
     progress.update(fetch_task, description="[bold green]Fetch complete![/bold green]")
 
-  seen_data = load_seen()
-  save_candidates([])
+  seen_data = read("data/seen.json", dict)
+  delete("data/candidates.json")
 
   new_passing_jobs = []
   skipped_seen = 0
@@ -105,10 +105,9 @@ def main(source_name: str | None, no_aggregators: bool = False, ignore_seen: boo
     is_priority = (job.company or "").lower() in priority_companies
     if is_priority:
       final_passing_jobs.append(job)
-    else:
-      if non_priority_count < max_candidates:
-        final_passing_jobs.append(job)
-        non_priority_count += 1
+    elif non_priority_count < max_candidates:
+      final_passing_jobs.append(job)
+      non_priority_count += 1
 
   cut_over_cap = len(sorted_passing_jobs) - len(final_passing_jobs)
 
@@ -123,7 +122,7 @@ def main(source_name: str | None, no_aggregators: bool = False, ignore_seen: boo
     final_candidates.append(candidate)
 
   if final_candidates:
-    save_candidates(final_candidates)
+    write("data/candidates.json", final_candidates)
 
   logger.info(
     f"Fetch summary — Raw: {len(fetched_jobs)}, "

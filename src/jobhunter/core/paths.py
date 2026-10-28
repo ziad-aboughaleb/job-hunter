@@ -1,4 +1,11 @@
+import contextlib
+import json
+import os
+import tempfile
 from pathlib import Path
+from typing import Any
+
+from filelock import FileLock
 
 
 def get_project_root() -> Path:
@@ -10,3 +17,91 @@ def get_project_root() -> Path:
       return directory
 
   return Path.cwd()
+
+
+ROOT_PATH = get_project_root()
+
+
+def _json_default(obj: Any) -> Any:
+  """Fallback handler for non-standard JSON types like Pydantic models."""
+  if hasattr(obj, "model_dump"):
+    return obj.model_dump(mode="json")
+  return str(obj)
+
+
+def write(path_from_root: str | Path, data: Any, timeout: int = 10):
+  """Atomically writes data to disk, using a lockfile to prevent multiple processes from writing at the exact same time."""
+  path = Path(path_from_root)
+  if not path.is_absolute():
+    path = ROOT_PATH / path
+
+  directory = path.parent
+  directory.mkdir(parents=True, exist_ok=True)
+
+  # Universal Data Conversion
+  if isinstance(data, bytes):
+    raw_bytes = data
+  elif isinstance(data, str):
+    raw_bytes = data.encode("utf-8")
+  elif isinstance(data, (dict, list)):
+    raw_bytes = json.dumps(data, indent=4, default=_json_default).encode("utf-8")
+  elif hasattr(data, "model_dump"):
+    raw_bytes = json.dumps(data.model_dump(mode="json"), indent=4).encode("utf-8")
+  else:
+    raw_bytes = str(data).encode("utf-8")
+
+  # Acquire the Lock
+  lock_path = path.with_suffix(path.suffix + ".lock")
+
+  with FileLock(str(lock_path), timeout=timeout):
+    fd, temp_path = tempfile.mkstemp(dir=directory, prefix=".tmp_")
+
+    try:
+      with os.fdopen(fd, "wb") as f:
+        f.write(raw_bytes)
+        f.flush()
+
+        if hasattr(os, "fdatasync"):
+          os.fdatasync(f.fileno())
+        else:
+          os.fsync(f.fileno())
+
+      os.replace(temp_path, path)
+
+    except Exception as e:
+      if os.path.exists(temp_path):
+        os.remove(temp_path)
+      raise e
+
+
+def read[T: (dict, list, str)](
+  path_from_root: str | Path,
+  expected_type: type[T] = str,  # type: ignore[assignment]
+) -> T:
+  """Reads the file and validates it to the requested type. Returns an empty default ({}, [], or "") if the file is missing."""
+  path = Path(path_from_root)
+  if not path.is_absolute():
+    path = ROOT_PATH / path
+
+  try:
+    text = path.read_text(encoding="utf-8")
+  except FileNotFoundError:
+    return expected_type()
+
+  if expected_type in (dict, list):
+    data = json.loads(text)
+    if not isinstance(data, expected_type):
+      raise TypeError(f"Expected {expected_type.__name__}, got {type(data).__name__}")
+    return data  # type: ignore[return-value]
+
+  return text  # type: ignore[return-value]
+
+
+def delete(path_from_root: str | Path):
+  """Unlinks the file safely without throwing an error if it doesn't exist."""
+  path = Path(path_from_root)
+  if not path.is_absolute():
+    path = ROOT_PATH / path
+
+  with contextlib.suppress(FileNotFoundError):
+    path.unlink()

@@ -4,8 +4,8 @@ from collections import defaultdict
 from ddgs import DDGS
 
 from jobhunter.core.logger import console, get_logger
+from jobhunter.core.paths import read, write
 from jobhunter.core.settings import settings
-from jobhunter.core.state import load_config, save_config
 from jobhunter.sources import SOURCES
 from jobhunter.sources.base import SlugStatus
 
@@ -86,7 +86,7 @@ def search_with_retries(query: str, retries: int = 3, backoff: float = 1.5) -> l
   raise RuntimeError(f"Failed to fetch DDGS query '{query}' after {retries} attempts.") from last_error
 
 
-def main(write: bool = False, source_name: str | None = None, titles_override: str | None = None):
+def main(write_flag: bool = False, source_name: str | None = None, titles_override: str | None = None):
   """Discovers new company slugs by searching for target titles on configured sources."""
   logger.info("Starting discovery run...")
   console.print("[bold cyan]Discovering new company slugs from configured sources...[/bold cyan]")
@@ -100,8 +100,8 @@ def main(write: bool = False, source_name: str | None = None, titles_override: s
     source = SOURCES[source_name]
 
     if getattr(source, "is_aggregator", False):
-      logger.warning(f"Source '{source_name}' is an aggregator. Discovery is only for finding ATS company slugs.")
-      console.print(f"[yellow]Notice: '{source_name}' is an aggregator. Discovery is only for finding ATS company slugs.[/yellow]")
+      logger.warning(f"Source '{source_name}' is an aggregator. Discovery is only for ATS company slugs.")
+      console.print(f"[yellow]Notice: '{source_name}' is an aggregator. Discovery is only for ATS company slugs.[/yellow]")
       return
 
   if titles_override:
@@ -203,7 +203,7 @@ def main(write: bool = False, source_name: str | None = None, titles_override: s
     console.print("\n[yellow]No new company slugs found.[/yellow]")
     return
 
-  raw_config = load_config()
+  raw_config = read("config/config.json", dict)
   raw_config.setdefault("companies", {})
 
   console.print("\n[bold]Discovery Summary:[/bold]")
@@ -214,8 +214,8 @@ def main(write: bool = False, source_name: str | None = None, titles_override: s
       existing.update(slugs)
       raw_config["companies"][name] = sorted(existing)
 
-  if write:
-    save_config(raw_config)
+  if write_flag:
+    write("config/config.json", raw_config)
     logger.info("Successfully saved new company slugs to config.json.")
     console.print("\n[bold green]Successfully saved to config.json![/bold green]")
   else:
