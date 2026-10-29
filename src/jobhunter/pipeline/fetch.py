@@ -33,6 +33,7 @@ def build_fetch_tasks(source_name: str | None, no_aggregators: bool) -> list[tup
         tasks.append((source, slug))
 
   logger.info(f"Generated {len(tasks)} fetch tasks.")
+
   return tasks
 
 
@@ -68,12 +69,12 @@ def execute_fetch_tasks(tasks: list[tuple]) -> list[Job]:
           progress.update(fetch_task, advance=1, description=f"[cyan]Fetching... [dim](Finished {name})[/dim]")
         except Exception as e:
           logger.exception(f"Error executing fetch task for {name}: {e}")
-          progress.console.print(f"[red]Error fetching {name}: {e}[/red]")
           progress.update(fetch_task, advance=1)
 
     progress.update(fetch_task, description="[bold green]Fetch complete![/bold green]")
 
   logger.info(f"Successfully fetched {len(fetched_jobs)} raw jobs.")
+
   return fetched_jobs
 
 
@@ -115,6 +116,7 @@ def filter_and_dedupe_jobs(fetched_jobs: list[Job], ignore_seen: bool) -> tuple[
       skipped_filters += 1
 
   logger.info(f"Filtering complete: {len(new_passing_jobs)} passed, {skipped_seen} skipped (seen), {skipped_dupes} dupes, {skipped_filters} failed filters.")
+
   return new_passing_jobs, skipped_seen, skipped_dupes, skipped_filters
 
 
@@ -172,7 +174,6 @@ def main(source_name: str | None = None, no_aggregators: bool = False, ignore_se
   tasks = build_fetch_tasks(source_name, no_aggregators)
   if not tasks:
     logger.warning("No active sources/companies found to scrape.")
-    console.print("[yellow]No active sources/companies found to scrape.[/yellow]")
     return
 
   fetched_jobs = execute_fetch_tasks(tasks)
@@ -187,11 +188,11 @@ def main(source_name: str | None = None, no_aggregators: bool = False, ignore_se
   logger.info(f"Pipeline finished. Raw: {len(fetched_jobs)} | Seen: {skipped_seen} | Dupe: {skipped_dupes} | Failed Filters: {skipped_filters} | Cut: {cut_over_cap} | Candidates: {len(final_candidates)}")
 
   console.print("\n[bold]Fetch Summary[/bold]")
-  console.print("──────────────────────────────")
+  console.print("───────────────────────────────────────")
   console.print(f"Total raw jobs  : [cyan]{len(fetched_jobs)}[/cyan]")
   console.print(f"Skipped (seen)  : [yellow]{skipped_seen}[/yellow]")
   console.print(f"Skipped (dupe)  : [yellow]{skipped_dupes}[/yellow]")
   console.print(f"Failed filters  : [magenta]{skipped_filters}[/magenta]")
   console.print(f"Cut over cap    : [yellow]{cut_over_cap}[/yellow]")
   console.print(f"New candidates  : [bold green]{len(final_candidates)}[/bold green]")
-  console.print("──────────────────────────────\n")
+  console.print("───────────────────────────────────────\n")
