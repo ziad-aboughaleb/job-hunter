@@ -74,7 +74,18 @@ def build_user_prompt(candidate: Candidate) -> str:
   """Builds the per-job prompt payload from a saved Candidate."""
   description = candidate.description
 
-  return f"Evaluate this job posting against the candidate's profile.\n\n<job>\nTitle: {candidate.title}\nCompany: {candidate.company}\nLocation: {candidate.location}\nPosted: {candidate.posted or 'Unknown'}\n\nDescription:\n{description}\n</job>"
+  return f"""
+Evaluate this job posting against the candidate's profile.
+
+<job>
+Title: {candidate.title}
+Company: {candidate.company}
+Location: {candidate.location}
+Posted: {candidate.posted or 'Unknown'}
+Description:
+{description}
+</job>
+"""
 
 
 def main():
