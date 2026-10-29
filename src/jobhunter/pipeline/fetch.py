@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def build_fetch_tasks(source_name: str | None, no_aggregators: bool) -> list[tuple]:
   """Generates a list of (source, slug) tuples to be scraped."""
-  logger.info("Building fetch tasks...")
+  logger.debug("Building fetch tasks...")
   tasks = []
 
   for name, source in SOURCES.items():
@@ -32,7 +32,7 @@ def build_fetch_tasks(source_name: str | None, no_aggregators: bool) -> list[tup
       for slug in slugs:
         tasks.append((source, slug))
 
-  logger.info(f"Generated {len(tasks)} fetch tasks.")
+  logger.debug(f"Generated {len(tasks)} fetch tasks.")
   return tasks
 
 
@@ -41,7 +41,7 @@ def execute_fetch_tasks(tasks: list[tuple]) -> list[Job]:
   fetched_jobs: list[Job] = []
   max_workers = settings.limits.fetch_workers
 
-  logger.info(f"Executing fetch tasks with {max_workers} workers...")
+  logger.info(f"Executing fetch tasks across {len(tasks)} targets with {max_workers} workers.")
   console.print("[bold cyan]Fetching jobs from configured sources...[/bold cyan]")
 
   with Progress(
@@ -67,7 +67,7 @@ def execute_fetch_tasks(tasks: list[tuple]) -> list[Job]:
 
           progress.update(fetch_task, advance=1, description=f"[cyan]Fetching... [dim](Finished {name})[/dim]")
         except Exception as e:
-          logger.exception(f"Error fetching {name}: {e}")
+          logger.exception(f"Error executing fetch task for {name}: {e}")
           progress.console.print(f"[red]Error fetching {name}: {e}[/red]")
           progress.update(fetch_task, advance=1)
 
@@ -79,7 +79,7 @@ def execute_fetch_tasks(tasks: list[tuple]) -> list[Job]:
 
 def filter_and_dedupe_jobs(fetched_jobs: list[Job], ignore_seen: bool) -> tuple[list[Job], int, int, int]:
   """Removes previously seen jobs, cross-source duplicates, and jobs failing filters."""
-  logger.info("Filtering and deduplicating jobs...")
+  logger.debug("Filtering and deduplicating jobs...")
   console.print("[dim cyan]Filtering and deduplicating jobs...[/dim cyan]")
 
   seen_data = read(DATA_PATH / "seen.json", dict)
@@ -120,14 +120,12 @@ def filter_and_dedupe_jobs(fetched_jobs: list[Job], ignore_seen: bool) -> tuple[
 
 def score_and_sort_jobs(jobs: list[Job]) -> list[Job]:
   """Scores jobs based on priority and stack hits, sorting the best to the top."""
-  logger.info("Scoring and sorting passing jobs...")
+  logger.debug("Scoring and sorting passing jobs...")
   console.print("[dim cyan]Scoring and sorting candidates...[/dim cyan]")
 
   priority_companies = {c.lower() for c in settings.filters.company_priority}
 
   scored_jobs = [(job, (job.company or "").lower() in priority_companies, count_stack_hits(job)) for job in jobs]
-
-  # Sort primarily by Priority Company (True/False), then by Stack Hits (highest to lowest)
   scored_jobs.sort(key=lambda item: (item[1], item[2]), reverse=True)
 
   return [item[0] for item in scored_jobs]
@@ -135,7 +133,7 @@ def score_and_sort_jobs(jobs: list[Job]) -> list[Job]:
 
 def cap_and_format_candidates(sorted_jobs: list[Job], limit: int | None = None) -> tuple[list[Candidate], int]:
   """Enforces the max candidate limit and converts Jobs into final Candidates."""
-  logger.info("Enforcing limits and generating final candidates...")
+  logger.debug("Enforcing limits and generating final candidates...")
   console.print("[dim cyan]Enforcing candidate limits...[/dim cyan]")
 
   priority_companies = {c.lower() for c in settings.filters.company_priority}
@@ -155,12 +153,11 @@ def cap_and_format_candidates(sorted_jobs: list[Job], limit: int | None = None) 
   cut_over_cap = len(sorted_jobs) - len(final_passing_jobs)
   final_candidates = []
 
-  for i, job in enumerate(final_passing_jobs, start=1):
-    ref = f"J{i}"
+  for _, job in enumerate(final_passing_jobs, start=1):
     is_priority = (job.company or "").lower() in priority_companies
     hits = count_stack_hits(job)
 
-    candidate = Candidate.from_job(job, ref=ref, priority=is_priority, stack_hits=hits)
+    candidate = Candidate.from_job(job, priority=is_priority, stack_hits=hits)
     final_candidates.append(candidate)
 
   logger.info(f"Generated {len(final_candidates)} candidates. Cut {cut_over_cap} jobs over the cap.")
@@ -170,34 +167,24 @@ def cap_and_format_candidates(sorted_jobs: list[Job], limit: int | None = None) 
 
 def main(source_name: str | None = None, no_aggregators: bool = False, ignore_seen: bool = False, limit: int | None = None):
   """Orchestrates the job fetching, filtering, and candidate generation pipeline."""
-  logger.info("Starting job fetch pipeline...")
+  logger.info("Starting job fetch pipeline run.")
 
-  # 1. Setup
   tasks = build_fetch_tasks(source_name, no_aggregators)
   if not tasks:
     logger.warning("No active sources/companies found to scrape.")
     console.print("[yellow]No active sources/companies found to scrape.[/yellow]")
     return
 
-  # 2. Extract
   fetched_jobs = execute_fetch_tasks(tasks)
-
-  # 3. Filter
   passing_jobs, skipped_seen, skipped_dupes, skipped_filters = filter_and_dedupe_jobs(fetched_jobs, ignore_seen)
-
-  # 4. Score
   sorted_jobs = score_and_sort_jobs(passing_jobs)
-
-  # 5. Cap & Format
   final_candidates, cut_over_cap = cap_and_format_candidates(sorted_jobs, limit)
 
-  # 6. Save
   if final_candidates:
     write(DATA_PATH / "candidates.json", final_candidates)
     logger.info(f"Successfully saved {len(final_candidates)} candidates to disk.")
 
-  # 7. Report
-  logger.info(f"Fetch pipeline completed. Raw: {len(fetched_jobs)} | Seen: {skipped_seen} | Dupe: {skipped_dupes} | Failed Filters: {skipped_filters} | Cut: {cut_over_cap} | Candidates: {len(final_candidates)}")
+  logger.info(f"Pipeline finished. Raw: {len(fetched_jobs)} | Seen: {skipped_seen} | Dupe: {skipped_dupes} | Failed Filters: {skipped_filters} | Cut: {cut_over_cap} | Candidates: {len(final_candidates)}")
 
   console.print("\n[bold]Fetch Summary[/bold]")
   console.print("──────────────────────────────")

@@ -81,7 +81,7 @@ Evaluate this job posting against the candidate's profile.
 Title: {candidate.title}
 Company: {candidate.company}
 Location: {candidate.location}
-Posted: {candidate.posted or 'Unknown'}
+Posted: {candidate.posted or "Unknown"}
 Description:
 {description}
 </job>

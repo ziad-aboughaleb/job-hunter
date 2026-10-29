@@ -17,7 +17,6 @@ class Job(BaseModel):
 
 
 class Candidate(BaseModel):
-  ref: str = Field(..., description="Short reference ID (e.g., J1, J2)")
   uid: str = Field(..., description="Unique compound identifier: source:board:job_id_or_url")
   priority: bool = False
   stack_hits: int = 0
@@ -34,7 +33,7 @@ class Candidate(BaseModel):
   description: str = ""
 
   @classmethod
-  def from_job(cls, job: Job, ref: str, priority: bool, stack_hits: int) -> Candidate:
+  def from_job(cls, job: Job, priority: bool, stack_hits: int) -> Candidate:
     """Factory method to convert a raw scraped Job into a stored Candidate."""
     uid = f"{job.source}:{job.board}:{job.job_id or job.url}"
 
@@ -42,7 +41,6 @@ class Candidate(BaseModel):
     truncated_description = (job.description or "No description provided.")[:max_chars]
 
     return cls(
-      ref=ref,
       uid=uid,
       priority=priority,
       stack_hits=stack_hits,

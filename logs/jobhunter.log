@@ -1,0 +1,7 @@
+2026-10-29 15:47:19 [INFO] jobhunter.pipeline.fetch: Starting job fetch pipeline run.
+2026-10-29 15:47:19 [INFO] jobhunter.pipeline.fetch: Executing fetch tasks across 163 targets with 8 workers.
+2026-10-29 15:48:34 [INFO] jobhunter.pipeline.fetch: Successfully fetched 22061 raw jobs.
+2026-10-29 15:48:40 [INFO] jobhunter.pipeline.fetch: Filtering complete: 167 passed, 0 skipped (seen), 621 dupes, 21273 failed filters.
+2026-10-29 15:48:41 [INFO] jobhunter.pipeline.fetch: Generated 30 candidates. Cut 137 jobs over the cap.
+2026-10-29 15:48:41 [INFO] jobhunter.pipeline.fetch: Successfully saved 30 candidates to disk.
+2026-10-29 15:48:41 [INFO] jobhunter.pipeline.fetch: Pipeline finished. Raw: 22061 | Seen: 0 | Dupe: 621 | Failed Filters: 21273 | Cut: 137 | Candidates: 30
