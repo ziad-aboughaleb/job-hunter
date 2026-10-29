@@ -1,15 +1,15 @@
+import logging
 import re
 import xml.etree.ElementTree as ET
 
 import httpx
 
 from jobhunter.core.http import fetch_url
-from jobhunter.core.logger import get_logger
 from jobhunter.core.textutil import clean_html, parse_date
 from jobhunter.models import Job
 from jobhunter.sources.base import BaseSource
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class Source(BaseSource):

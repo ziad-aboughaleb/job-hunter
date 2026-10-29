@@ -1,3 +1,4 @@
+import logging
 import sys
 from typing import Annotated
 
@@ -82,5 +83,6 @@ def main():
     console.print("\n[yellow]Aborted by user.[/yellow]")
     sys.exit(1)
   except Exception as e:
-    console.print(f"\n[bold red]Error: {e}[/bold red]")
+    logger = logging.getLogger(__name__)
+    logger.exception(f"Fatal error: {e}")
     sys.exit(1)

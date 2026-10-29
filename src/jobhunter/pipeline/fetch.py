@@ -1,16 +1,17 @@
 import concurrent.futures
+import logging
 
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 from rich.table import Column
 
 from jobhunter.core.filters import count_stack_hits, passes_all_filters
-from jobhunter.core.logger import console, get_logger
+from jobhunter.core.logger import console
 from jobhunter.core.paths import DATA_PATH, read, write
 from jobhunter.core.settings import settings
 from jobhunter.models import Candidate, Job
 from jobhunter.sources import SOURCES
 
-logger = get_logger(__name__, log_to_console=False)
+logger = logging.getLogger(__name__)
 
 
 def build_fetch_tasks(source_name: str | None, no_aggregators: bool) -> list[tuple]:

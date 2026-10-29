@@ -1,12 +1,13 @@
+import logging
+
 import httpx
 
-from jobhunter.core.http import fetch_json
-from jobhunter.core.logger import get_logger
+from jobhunter.core.http import fetch_url
 from jobhunter.core.textutil import clean_html, parse_date
 from jobhunter.models import Job
 from jobhunter.sources.base import BaseSource
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class Source(BaseSource):
@@ -21,7 +22,7 @@ class Source(BaseSource):
     url = f"https://remotive.com/api/remote-jobs?category={category}"
 
     try:
-      data = fetch_json(url, expected_type=dict)
+      data = fetch_url(url, expected_type=dict)
     except httpx.HTTPStatusError:
       raise
     except (httpx.HTTPError, ValueError) as e:

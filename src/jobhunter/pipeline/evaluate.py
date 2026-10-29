@@ -1,4 +1,5 @@
 import concurrent.futures
+import logging
 import time
 
 import openai
@@ -7,13 +8,13 @@ from pydantic import ValidationError
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 from rich.table import Column
 
-from jobhunter.core.logger import console, get_logger
+from jobhunter.core.logger import console
 from jobhunter.core.paths import DATA_PATH, read, write
 from jobhunter.core.settings import settings
 from jobhunter.models import Candidate, EvaluationResult
 from jobhunter.tools.prompt import build_system_prompt, build_user_prompt
 
-logger = get_logger(__name__, log_to_console=False)
+logger = logging.getLogger(__name__)
 
 
 def setup_llm_client() -> OpenAI:

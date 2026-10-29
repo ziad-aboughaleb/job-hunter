@@ -1,11 +1,12 @@
+import logging
 from typing import Any
 
-from jobhunter.core.logger import console, get_logger
+from jobhunter.core.logger import console
 from jobhunter.core.paths import CONFIG_PATH, read, write
 from jobhunter.sources import SOURCES
 from jobhunter.sources.base import SlugStatus
 
-logger = get_logger(__name__, log_to_console=False)
+logger = logging.getLogger(__name__)
 
 
 def get_target_sources(raw_config: dict, source_name: str | None) -> dict[str, list[str]]:

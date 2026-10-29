@@ -1,4 +1,5 @@
 import contextlib
+import hashlib
 import json
 import os
 import tempfile
@@ -6,10 +7,6 @@ from pathlib import Path
 from typing import Any
 
 from filelock import FileLock
-
-from jobhunter.core.logger import get_logger
-
-logger = get_logger(__name__)
 
 
 def get_project_root() -> Path:
@@ -24,6 +21,7 @@ def get_project_root() -> Path:
 
 
 ROOT_PATH = get_project_root()
+LOCKS_PATH = ROOT_PATH / ".locks"
 DATA_PATH = ROOT_PATH / "data"
 CONFIG_PATH = ROOT_PATH / "config"
 
@@ -31,8 +29,8 @@ CONFIG_PATH = ROOT_PATH / "config"
 def _resolve_path(path_in: str | Path) -> Path:
   """
   Safely resolves a path against the project root.
-  If path_in is absolute (e.g. DATA_PATH / 'file.json'), it returns it as-is.
-  If path_in is relative (e.g. 'data/file.json'), it prepends ROOT_PATH.
+  If path_in is absolute, it returns it as-is.
+  If path_in is relative, it prepends ROOT_PATH.
   """
   return ROOT_PATH / path_in
 
@@ -45,17 +43,13 @@ def _json_default(obj: Any) -> Any:
 
 
 def write(path_from_root: str | Path, data: Any, timeout: int = 10):
-  """Atomically writes data to disk, using a lockfile to prevent multiple processes from writing at the exact same time."""
+  """Atomically writes data to disk using a persistent lockfile for process safety."""
   path = _resolve_path(path_from_root)
 
   directory = path.parent
-  try:
-    directory.mkdir(parents=True, exist_ok=True)
-  except Exception as e:
-    logger.error(f"Failed to create directory {directory}: {e}")
-    raise
+  directory.mkdir(parents=True, exist_ok=True)
+  LOCKS_PATH.mkdir(exist_ok=True)
 
-  # Universal Data Conversion
   if isinstance(data, bytes):
     raw_bytes = data
   elif isinstance(data, str):
@@ -67,78 +61,53 @@ def write(path_from_root: str | Path, data: Any, timeout: int = 10):
   else:
     raw_bytes = str(data).encode("utf-8")
 
-  # Acquire the Lock
-  lock_path = path.with_suffix(path.suffix + ".lock")
+  path_hash = hashlib.md5(str(path.resolve()).encode()).hexdigest()
+  lock_path = LOCKS_PATH / f"{path.name}_{path_hash}.lock"
 
-  try:
-    with FileLock(str(lock_path), timeout=timeout):
-      fd, temp_path = tempfile.mkstemp(dir=directory, prefix=".tmp_")
+  with FileLock(str(lock_path), timeout=timeout):
+    fd, temp_path = tempfile.mkstemp(dir=directory, prefix=".tmp_")
 
-      try:
-        with os.fdopen(fd, "wb") as f:
-          f.write(raw_bytes)
-          f.flush()
+    try:
+      with os.fdopen(fd, "wb") as f:
+        f.write(raw_bytes)
+        f.flush()
+        if hasattr(os, "fdatasync"):
+          os.fdatasync(f.fileno())
+        else:
+          os.fsync(f.fileno())
 
-          if hasattr(os, "fdatasync"):
-            os.fdatasync(f.fileno())
-          else:
-            os.fsync(f.fileno())
+      os.replace(temp_path, path)
 
-        os.replace(temp_path, path)
-
-      except Exception as e:
-        logger.error(f"Failed to write atomically to {path}: {e}")
+    except Exception:
+      with contextlib.suppress(OSError):
         if os.path.exists(temp_path):
           os.remove(temp_path)
-        raise
-
-  except Exception as e:
-    logger.error(f"Write operation failed for {path} (Lock or IO Error): {e}")
-    raise
-  finally:
-    with contextlib.suppress(OSError):
-      lock_path.unlink()
+      raise
 
 
 def read[T: (dict, list, str)](
   path_from_root: str | Path,
-  expected_type: type[T] = str,  # type: ignore[assignment]
+  expected_type: type[T] = str,
 ) -> T:
-  """Reads the file and validates it to the requested type. Returns an empty default ({}, [], or "") if the file is missing."""
+  """Reads and parses a file. Returns a default empty instance ({}, [], "") if missing."""
   path = _resolve_path(path_from_root)
 
   try:
     text = path.read_text(encoding="utf-8")
   except FileNotFoundError:
     return expected_type()
-  except Exception as e:
-    logger.error(f"Failed to read file {path}: {e}")
-    raise
 
   if expected_type in (dict, list):
-    try:
-      data = json.loads(text)
-    except json.JSONDecodeError as e:
-      logger.error(f"JSON corruption detected in {path}: {e}")
-      raise
+    data = json.loads(text)
 
     if not isinstance(data, expected_type):
-      logger.error(f"Type mismatch in {path}: Expected {expected_type.__name__}, got {type(data).__name__}")
-      raise TypeError(f"Expected {expected_type.__name__}, got {type(data).__name__}")
+      raise TypeError(f"Type mismatch in {path}: Expected {expected_type.__name__}, got {type(data).__name__}")
 
-    return data  # type: ignore[return-value]
+    return data
 
-  return text  # type: ignore[return-value]
+  return text  # type: ignore
 
 
 def delete(path_from_root: str | Path):
-  """Unlinks the file safely without throwing an error if it doesn't exist."""
-  path = _resolve_path(path_from_root)
-
-  try:
-    path.unlink()
-  except FileNotFoundError:
-    pass
-  except Exception as e:
-    logger.error(f"Failed to delete file {path}: {e}")
-    raise
+  """Safely unlinks a file if it exists."""
+  _resolve_path(path_from_root).unlink(missing_ok=True)

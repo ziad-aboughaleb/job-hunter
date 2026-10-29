@@ -1,16 +1,17 @@
+import logging
 import time
 from collections import defaultdict
 from typing import Any
 
 from ddgs import DDGS
 
-from jobhunter.core.logger import console, get_logger
+from jobhunter.core.logger import console
 from jobhunter.core.paths import CONFIG_PATH, read, write
 from jobhunter.core.settings import settings
 from jobhunter.sources import SOURCES
 from jobhunter.sources.base import SlugStatus
 
-logger = get_logger(__name__, log_to_console=False)
+logger = logging.getLogger(__name__)
 
 QUERY_LIMIT = 6
 RETRIES = 3

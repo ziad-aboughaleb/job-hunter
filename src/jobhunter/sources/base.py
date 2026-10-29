@@ -1,3 +1,4 @@
+import logging
 import re
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -6,13 +7,12 @@ from urllib.parse import unquote
 
 import httpx
 
-from jobhunter.core.logger import get_logger
 from jobhunter.core.settings import settings
 from jobhunter.models import Job
 
-DEFINITIVE_INVALID_STATUS = {404, 410}
+logger = logging.getLogger(__name__)
 
-logger = get_logger(__name__)
+DEFINITIVE_INVALID_STATUS = {404, 410}
 
 
 class SlugStatus(Enum):
