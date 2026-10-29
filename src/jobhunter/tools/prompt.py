@@ -11,7 +11,7 @@ def build_hard_gates() -> list[str]:
   return [
     "The posting restricts applicants to a country, region, or time zone outside the candidate's preferences (check location AND description).",
     "The work arrangement (remote, hybrid, on-site) does not suit the candidate's preferences.",
-    "The seniority level is far outside what the preferences accept. (a gap of 1 or 2 years is fine as long as the skill of the candidate suit the job)",
+    "The seniority level is far outside what the preferences accept. (a gap of 1 or 2 years is fine as long as the skills of the candidate suit the job)",
     f"The primary focus of the role is not mainly {target_roles}.",
     "The job description explicitly mentions a dealbreaker listed in the preferences.",
   ]

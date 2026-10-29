@@ -5,7 +5,7 @@ from rich.table import Column
 
 from jobhunter.core.filters import count_stack_hits, passes_all_filters
 from jobhunter.core.logger import console, get_logger
-from jobhunter.core.paths import DATA_PATH, delete, read, write
+from jobhunter.core.paths import DATA_PATH, read, write
 from jobhunter.core.settings import settings
 from jobhunter.models import Candidate, Job
 from jobhunter.sources import SOURCES
@@ -191,7 +191,6 @@ def main(source_name: str | None = None, no_aggregators: bool = False, ignore_se
   final_candidates, cut_over_cap = cap_and_format_candidates(sorted_jobs, limit)
 
   # 6. Save
-  delete(DATA_PATH / "candidates.json")
   if final_candidates:
     write(DATA_PATH / "candidates.json", final_candidates)
     logger.info(f"Successfully saved {len(final_candidates)} candidates to disk.")

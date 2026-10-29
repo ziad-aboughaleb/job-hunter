@@ -38,8 +38,12 @@ def setup_logging(level: str = "INFO", log_file: str = "logs/jobhunter.log") -> 
     force=True,
   )
 
-  for noisy_logger in ("openai._base_client", "openai", "ddgs", "primp", "httpx", "httpcore", "urllib3"):
+  for noisy_logger in ("openai", "httpx", "httpcore", "urllib3", "ddgs", "primp"):
     logging.getLogger(noisy_logger).setLevel(logging.WARNING)
+
+  for name, logger in logging.root.manager.loggerDict.items():
+    if any(name.startswith(prefix) for prefix in ("openai", "httpx", "httpcore", "urllib3")) and isinstance(logger, logging.Logger):
+      logger.setLevel(logging.WARNING)
 
 
 def get_logger(name: str, log_to_console: bool = True, log_file: str = "logs/jobhunter.log") -> logging.Logger:

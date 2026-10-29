@@ -148,7 +148,7 @@ def execute_evaluation_pipeline(client: OpenAI, candidates: list[Candidate], sys
   return results
 
 
-def process_and_save_results(results: list[tuple[Candidate, EvaluationResult | None]], all_candidates: list[Candidate]) -> tuple[int, int, int, int]:
+def process_and_save_results(results: list[tuple[Candidate, EvaluationResult | None]], all_candidates: list[Candidate]) -> tuple[list[EvaluationResult], int, int, int, int]:
   """Saves successful evals to evaluation.json and keeps remaining in candidates.json."""
   logger.info("Processing LLM results and saving...")
   console.print("[dim cyan]Saving evaluated candidates to disk...[/dim cyan]")
@@ -158,7 +158,7 @@ def process_and_save_results(results: list[tuple[Candidate, EvaluationResult | N
   low_score = 0
   errors = 0
 
-  evaluated_data = read(DATA_PATH / "evaluated.json", list)
+  evaluated_data = []
   evaluated_uids = set()
 
   for candidate, evaluation in results:
@@ -192,14 +192,9 @@ def process_and_save_results(results: list[tuple[Candidate, EvaluationResult | N
 
     evaluated_data.append(candidate_dict)
 
-  if evaluated_data:
-    write(DATA_PATH / "evaluated.json", evaluated_data)
-    logger.info("Successfully appended to evaluated.json.")
+  evaluated_data = sorted(evaluated_data, key=lambda x: x.get("evaluation", {}).get("score", -1), reverse=True)
 
-  remaining_candidates = [c.model_dump() for c in all_candidates if c.uid not in evaluated_uids]
-  write(DATA_PATH / "candidates.json", remaining_candidates)
-
-  return passed, hard_failed, low_score, errors
+  return evaluated_data, passed, hard_failed, low_score, errors
 
 
 def main():
@@ -219,7 +214,11 @@ def main():
 
   results = execute_evaluation_pipeline(client, pending_candidates, system_prompt)
 
-  passed, hard_failed, low_score, errors = process_and_save_results(results, all_candidates)
+  evaluated_data, passed, hard_failed, low_score, errors = process_and_save_results(results, all_candidates)
+
+  if evaluated_data:
+    write(DATA_PATH / "evaluated.json", evaluated_data)
+    logger.info("Successfully appended to evaluated.json.")
 
   total_successful = passed + hard_failed + low_score
   logger.info(f"Evaluation pipeline completed. Successful: {total_successful} | Passed: {passed} | Hard Failed: {hard_failed} | Low Score: {low_score} | Errors: {errors}")
