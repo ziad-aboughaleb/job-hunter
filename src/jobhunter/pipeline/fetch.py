@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def build_fetch_tasks(source_name: str | None, no_aggregators: bool) -> list[tuple]:
   """Generates a list of (source, slug) tuples to be scraped."""
-  logger.debug("Building fetch tasks...")
+  logger.info("Building fetch tasks...")
   tasks = []
 
   for name, source in SOURCES.items():
@@ -32,7 +32,7 @@ def build_fetch_tasks(source_name: str | None, no_aggregators: bool) -> list[tup
       for slug in slugs:
         tasks.append((source, slug))
 
-  logger.debug(f"Generated {len(tasks)} fetch tasks.")
+  logger.info(f"Generated {len(tasks)} fetch tasks.")
   return tasks
 
 
@@ -79,7 +79,7 @@ def execute_fetch_tasks(tasks: list[tuple]) -> list[Job]:
 
 def filter_and_dedupe_jobs(fetched_jobs: list[Job], ignore_seen: bool) -> tuple[list[Job], int, int, int]:
   """Removes previously seen jobs, cross-source duplicates, and jobs failing filters."""
-  logger.debug("Filtering and deduplicating jobs...")
+  logger.info("Filtering and deduplicating jobs...")
   console.print("[dim cyan]Filtering and deduplicating jobs...[/dim cyan]")
 
   seen_data = read(DATA_PATH / "seen.json", dict)
@@ -120,7 +120,7 @@ def filter_and_dedupe_jobs(fetched_jobs: list[Job], ignore_seen: bool) -> tuple[
 
 def score_and_sort_jobs(jobs: list[Job]) -> list[Job]:
   """Scores jobs based on priority and stack hits, sorting the best to the top."""
-  logger.debug("Scoring and sorting passing jobs...")
+  logger.info("Scoring and sorting passing jobs...")
   console.print("[dim cyan]Scoring and sorting candidates...[/dim cyan]")
 
   priority_companies = {c.lower() for c in settings.filters.company_priority}
@@ -133,7 +133,7 @@ def score_and_sort_jobs(jobs: list[Job]) -> list[Job]:
 
 def cap_and_format_candidates(sorted_jobs: list[Job], limit: int | None = None) -> tuple[list[Candidate], int]:
   """Enforces the max candidate limit and converts Jobs into final Candidates."""
-  logger.debug("Enforcing limits and generating final candidates...")
+  logger.info("Enforcing limits and generating final candidates...")
   console.print("[dim cyan]Enforcing candidate limits...[/dim cyan]")
 
   priority_companies = {c.lower() for c in settings.filters.company_priority}
