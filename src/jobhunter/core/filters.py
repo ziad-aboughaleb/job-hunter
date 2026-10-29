@@ -18,10 +18,7 @@ def is_valid_title(job: Job) -> bool:
   title = (job.title or "").lower()
   filters = settings.filters
 
-  return not (
-    (filters.title_exclude and any(has_word(ex, title) for ex in filters.title_exclude))
-    or (filters.title_include and not any(has_word(inc, title) for inc in filters.title_include))
-  )
+  return not ((filters.title_exclude and any(has_word(ex, title) for ex in filters.title_exclude)) or (filters.title_include and not any(has_word(inc, title) for inc in filters.title_include)))
 
 
 def is_valid_company(job: Job) -> bool:

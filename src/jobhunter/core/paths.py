@@ -24,6 +24,17 @@ def get_project_root() -> Path:
 
 
 ROOT_PATH = get_project_root()
+DATA_PATH = ROOT_PATH / "data"
+CONFIG_PATH = ROOT_PATH / "config"
+
+
+def _resolve_path(path_in: str | Path) -> Path:
+  """
+  Safely resolves a path against the project root.
+  If path_in is absolute (e.g. DATA_PATH / 'file.json'), it returns it as-is.
+  If path_in is relative (e.g. 'data/file.json'), it prepends ROOT_PATH.
+  """
+  return ROOT_PATH / path_in
 
 
 def _json_default(obj: Any) -> Any:
@@ -35,9 +46,7 @@ def _json_default(obj: Any) -> Any:
 
 def write(path_from_root: str | Path, data: Any, timeout: int = 10):
   """Atomically writes data to disk, using a lockfile to prevent multiple processes from writing at the exact same time."""
-  path = Path(path_from_root)
-  if not path.is_absolute():
-    path = ROOT_PATH / path
+  path = _resolve_path(path_from_root)
 
   directory = path.parent
   try:
@@ -96,9 +105,7 @@ def read[T: (dict, list, str)](
   expected_type: type[T] = str,  # type: ignore[assignment]
 ) -> T:
   """Reads the file and validates it to the requested type. Returns an empty default ({}, [], or "") if the file is missing."""
-  path = Path(path_from_root)
-  if not path.is_absolute():
-    path = ROOT_PATH / path
+  path = _resolve_path(path_from_root)
 
   try:
     text = path.read_text(encoding="utf-8")
@@ -126,14 +133,12 @@ def read[T: (dict, list, str)](
 
 def delete(path_from_root: str | Path):
   """Unlinks the file safely without throwing an error if it doesn't exist."""
-  path = Path(path_from_root)
-  if not path.is_absolute():
-    path = ROOT_PATH / path
+  path = _resolve_path(path_from_root)
 
   try:
     path.unlink()
   except FileNotFoundError:
-    pass  # Already deleted/doesn't exist, which is fine
+    pass
   except Exception as e:
     logger.error(f"Failed to delete file {path}: {e}")
     raise

@@ -4,7 +4,7 @@ import typer
 
 from jobhunter.core.logger import setup_logging
 from jobhunter.pipeline import evaluate, fetch, send
-from jobhunter.tools import discover, prune
+from jobhunter.tools import discover, prompt, prune
 
 app = typer.Typer(
   help="JobHunter - Automated job scraping and filtering pipeline.",
@@ -15,6 +15,7 @@ app = typer.Typer(
 SourceOpt = typer.Option(None, "--source", "-s", help="Specific source to fetch from")
 NoAggOpt = typer.Option(False, "--no-aggregators", help="Skip aggregator boards")
 IgnoreSeenOpt = typer.Option(False, "--ignore-seen", help="Ignore seen jobs and fetch all")
+LimitOpt = typer.Option(None, "--limit", "-l", help="Overrides max_candidates limit in config.json")
 
 
 @app.command("run", help="Run the full pipeline (fetch -> evaluate -> send)")
@@ -25,8 +26,8 @@ def run_all(source: str | None = SourceOpt, no_aggregators: bool = NoAggOpt, ign
 
 
 @app.command("fetch", help="Fetch jobs from configured boards")
-def fetch_jobs(source: str | None = SourceOpt, no_aggregators: bool = NoAggOpt, ignore_seen: bool = IgnoreSeenOpt):
-  fetch.main(source_name=source, no_aggregators=no_aggregators, ignore_seen=ignore_seen)
+def fetch_jobs(source: str | None = SourceOpt, no_aggregators: bool = NoAggOpt, ignore_seen: bool = IgnoreSeenOpt, limit: int | None = LimitOpt):
+  fetch.main(source_name=source, no_aggregators=no_aggregators, ignore_seen=ignore_seen, limit=limit)
 
 
 @app.command("evaluate", help="Score and evaluate candidates")
@@ -48,9 +49,14 @@ def discover_boards(
   discover.main(write_flag=write, source_name=source, titles_override=titles)
 
 
-@app.command("prune", help="Prune broken company entries from config/config.json")
-def prune_state(write: bool = typer.Option(False, "--write", "-w", help="Write pruned config to config.json"), source=SourceOpt):
+@app.command("prune", help="Prune broken company entries from config.json")
+def prune_companies(write: bool = typer.Option(False, "--write", "-w", help="Write pruned config to config.json"), source=SourceOpt):
   prune.main(write_flag=write, source_name=source)
+
+
+@app.command("prompt", help="Prints the AI evaluation prompt for review")
+def show_prompt():
+  prompt.main()
 
 
 def main():

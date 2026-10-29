@@ -39,7 +39,7 @@ class Candidate(BaseModel):
     uid = f"{job.source}:{job.board}:{job.job_id or job.url}"
 
     max_chars = settings.limits.description_max_chars
-    truncated_description = (job.description or "")[:max_chars]
+    truncated_description = (job.description or "No description provided.")[:max_chars]
 
     return cls(
       ref=ref,
@@ -60,10 +60,14 @@ class Candidate(BaseModel):
     )
 
 
-class AIResult(BaseModel):
-  job_id: str
-  score: int
-  hard_fail: bool
-  strengths: list[str]
-  gaps: list[str]
-  pitch: str
+class EvaluationResult(BaseModel):
+  """The exact JSON schema the LLM must return."""
+
+  reasoning: str = Field(description="A brief 2-3 sentence thought process analyzing the match before scoring.")
+  hard_fail: bool = Field(description="True if the job hits any hard gate or dealbreaker.")
+  hard_fail_reason: str = Field(default="", description="If hard_fail is true, a max 12-word explanation. Otherwise empty.")
+  strengths: list[str] = Field(description="2-3 short items showing requirements explicitly met by the CV.")
+  gaps: list[str] = Field(default_factory=list, description="Missing requirements or weak points compared to the CV.")
+  score: int = Field(description="Final match score (0-100) based on the rubric.")
+  score_explanation: str = Field(description="A 1-2 sentence explanation of exactly why the job passed or failed the score threshold.")
+  pitch: str = Field(default="", description="A short, one-sentence first-person pitch. Empty if score is below threshold.")

@@ -1,210 +1,53 @@
-2026-10-28 15:55:43 [INFO] jobhunter.pipeline.fetch: Starting job fetch pipeline...
-2026-10-28 15:55:59 [INFO] jobhunter.pipeline.fetch: Starting job fetch pipeline...
-2026-10-28 15:56:11 [INFO] jobhunter.pipeline.fetch: Fetch summary — Raw: 4918, Skipped Seen: 0, Failed Filters: 4918, Cut Over Cap: 0, New Candidates: 0
-2026-10-28 15:58:51 [INFO] jobhunter.pipeline.fetch: === Starting job fetch pipeline ===
-2026-10-28 15:58:51 [INFO] jobhunter.pipeline.fetch: Building fetch tasks...
-2026-10-28 15:58:51 [INFO] jobhunter.pipeline.fetch: Generated 37 fetch tasks.
-2026-10-28 15:58:51 [INFO] jobhunter.pipeline.fetch: Executing fetch tasks with 8 workers...
-2026-10-28 15:58:57 [INFO] jobhunter.pipeline.fetch: Successfully fetched 4918 raw jobs.
-2026-10-28 15:58:57 [INFO] jobhunter.pipeline.fetch: Filtering and deduplicating jobs...
-2026-10-28 15:59:03 [INFO] jobhunter.pipeline.fetch: Filtering complete: 0 passed, 0 skipped (seen), 4918 failed filters.
-2026-10-28 15:59:03 [INFO] jobhunter.pipeline.fetch: Scoring and sorting passing jobs...
-2026-10-28 15:59:03 [INFO] jobhunter.pipeline.fetch: Enforcing limits and generating final candidates...
-2026-10-28 15:59:03 [INFO] jobhunter.pipeline.fetch: Generated 0 candidates. Cut 0 jobs over the cap.
-2026-10-28 15:59:03 [INFO] jobhunter.pipeline.fetch: Fetch pipeline completed. Raw: 4918 | Seen: 0 | Failed Filters: 4918 | Cut: 0 | Candidates: 0
-2026-10-28 16:02:16 [INFO] jobhunter.pipeline.fetch: Starting job fetch pipeline...
-2026-10-28 16:02:16 [INFO] jobhunter.pipeline.fetch: Building fetch tasks...
-2026-10-28 16:02:16 [INFO] jobhunter.pipeline.fetch: Generated 128 fetch tasks.
-2026-10-28 16:02:16 [INFO] jobhunter.pipeline.fetch: Executing fetch tasks with 8 workers...
-2026-10-28 16:03:21 [INFO] jobhunter.pipeline.fetch: Successfully fetched 20453 raw jobs.
-2026-10-28 16:03:21 [INFO] jobhunter.pipeline.fetch: Filtering and deduplicating jobs...
-2026-10-28 16:03:45 [INFO] jobhunter.pipeline.fetch: Filtering complete: 123 passed, 0 skipped (seen), 20330 failed filters.
-2026-10-28 16:03:45 [INFO] jobhunter.pipeline.fetch: Scoring and sorting passing jobs...
-2026-10-28 16:03:46 [INFO] jobhunter.pipeline.fetch: Enforcing limits and generating final candidates...
-2026-10-28 16:03:46 [INFO] jobhunter.pipeline.fetch: Generated 30 candidates. Cut 93 jobs over the cap.
-2026-10-28 16:03:46 [INFO] jobhunter.pipeline.fetch: Successfully saved 30 candidates to disk.
-2026-10-28 16:03:46 [INFO] jobhunter.pipeline.fetch: Fetch pipeline completed. Raw: 20453 | Seen: 0 | Failed Filters: 20330 | Cut: 93 | Candidates: 30
-2026-10-28 16:08:39 [INFO] jobhunter.pipeline.fetch: Starting job fetch pipeline...
-2026-10-28 16:08:39 [INFO] jobhunter.pipeline.fetch: Building fetch tasks...
-2026-10-28 16:08:39 [INFO] jobhunter.pipeline.fetch: Generated 128 fetch tasks.
-2026-10-28 16:08:39 [INFO] jobhunter.pipeline.fetch: Executing fetch tasks with 8 workers...
-2026-10-28 16:09:34 [INFO] jobhunter.pipeline.fetch: Successfully fetched 20457 raw jobs.
-2026-10-28 16:09:34 [INFO] jobhunter.pipeline.fetch: Filtering and deduplicating jobs...
-2026-10-28 16:09:49 [INFO] jobhunter.pipeline.fetch: Filtering complete: 51 passed, 6462 skipped (seen/duplicate), 13944 failed filters.
-2026-10-28 16:09:49 [INFO] jobhunter.pipeline.fetch: Scoring and sorting passing jobs...
-2026-10-28 16:09:50 [INFO] jobhunter.pipeline.fetch: Enforcing limits and generating final candidates...
-2026-10-28 16:09:50 [INFO] jobhunter.pipeline.fetch: Generated 30 candidates. Cut 21 jobs over the cap.
-2026-10-28 16:09:50 [INFO] jobhunter.pipeline.fetch: Successfully saved 30 candidates to disk.
-2026-10-28 16:09:50 [INFO] jobhunter.pipeline.fetch: Fetch pipeline completed. Raw: 20457 | Seen: 6462 | Failed Filters: 13944 | Cut: 21 | Candidates: 30
-2026-10-28 16:22:42 [INFO] jobhunter.tools.discover: Starting discovery pipeline...
-2026-10-28 16:22:42 [INFO] jobhunter.tools.discover: Resolving target titles for discovery...
-2026-10-28 16:22:42 [INFO] jobhunter.tools.discover: Target titles resolved: full-stack, fullstack, full stack, frontend, front-end, backend
-2026-10-28 16:22:42 [INFO] jobhunter.tools.discover: Filtering valid sources for discovery...
-2026-10-28 16:22:42 [INFO] jobhunter.tools.discover: Found 6 valid sources for discovery.
-2026-10-28 16:22:42 [INFO] jobhunter.tools.discover: Executing search queries...
-2026-10-28 16:22:42 [INFO] jobhunter.tools.discover: Searching ashby with query: site:jobs.ashbyhq.com "full-stack"
-2026-10-28 16:22:44 [INFO] jobhunter.tools.discover: Finished ashby: 0 new, 0 known.
-2026-10-28 16:22:45 [INFO] jobhunter.tools.discover: Searching ashby with query: site:jobs.ashbyhq.com "fullstack"
-2026-10-28 16:22:47 [INFO] jobhunter.tools.discover: Finished ashby: 0 new, 0 known.
-2026-10-28 16:22:48 [INFO] jobhunter.tools.discover: Searching ashby with query: site:jobs.ashbyhq.com "full stack"
-2026-10-28 16:22:51 [INFO] jobhunter.tools.discover: No search results found for ashby.
-2026-10-28 16:22:51 [INFO] jobhunter.tools.discover: Searching ashby with query: site:jobs.ashbyhq.com "frontend"
-2026-10-28 16:22:53 [INFO] jobhunter.tools.discover: Finished ashby: 0 new, 0 known.
-2026-10-28 16:22:54 [INFO] jobhunter.tools.discover: Searching ashby with query: site:jobs.ashbyhq.com "front-end"
-2026-10-28 16:22:57 [INFO] jobhunter.tools.discover: No search results found for ashby.
-2026-10-28 16:22:57 [INFO] jobhunter.tools.discover: Searching ashby with query: site:jobs.ashbyhq.com "backend"
-2026-10-28 16:22:59 [INFO] jobhunter.tools.discover: No search results found for ashby.
-2026-10-28 16:22:59 [INFO] jobhunter.tools.discover: Searching greenhouse with query: site:boards.greenhouse.io "full-stack"
-2026-10-28 16:23:02 [INFO] jobhunter.tools.discover: No search results found for greenhouse.
-2026-10-28 16:23:02 [INFO] jobhunter.tools.discover: Searching greenhouse with query: site:boards.greenhouse.io "fullstack"
-2026-10-28 16:23:04 [INFO] jobhunter.tools.discover: No search results found for greenhouse.
-2026-10-28 16:23:04 [INFO] jobhunter.tools.discover: Searching greenhouse with query: site:boards.greenhouse.io "full stack"
-2026-10-28 16:23:07 [INFO] jobhunter.tools.discover: Found new valid slug for greenhouse: gomotive
-2026-10-28 16:23:07 [INFO] jobhunter.tools.discover: Found new valid slug for greenhouse: 2k
-2026-10-28 16:23:07 [INFO] jobhunter.tools.discover: Finished greenhouse: 2 new, 3 known.
-2026-10-28 16:23:09 [INFO] jobhunter.tools.discover: Searching greenhouse with query: site:boards.greenhouse.io "frontend"
-2026-10-28 16:23:11 [INFO] jobhunter.tools.discover: Finished greenhouse: 0 new, 6 known.
-2026-10-28 16:23:12 [INFO] jobhunter.tools.discover: Searching greenhouse with query: site:boards.greenhouse.io "front-end"
-2026-10-28 16:23:15 [INFO] jobhunter.tools.discover: Found new valid slug for greenhouse: globalwebindex
-2026-10-28 16:23:15 [INFO] jobhunter.tools.discover: Found new valid slug for greenhouse: tastytrade
-2026-10-28 16:23:16 [INFO] jobhunter.tools.discover: Found new valid slug for greenhouse: spotter
-2026-10-28 16:23:16 [INFO] jobhunter.tools.discover: Found new valid slug for greenhouse: autoproff
-2026-10-28 16:23:16 [INFO] jobhunter.tools.discover: Found new valid slug for greenhouse: easygo
-2026-10-28 16:23:16 [INFO] jobhunter.tools.discover: Finished greenhouse: 5 new, 1 known.
-2026-10-28 16:23:17 [INFO] jobhunter.tools.discover: Searching greenhouse with query: site:boards.greenhouse.io "backend"
-2026-10-28 16:23:20 [INFO] jobhunter.tools.discover: Finished greenhouse: 0 new, 4 known.
-2026-10-28 16:23:22 [INFO] jobhunter.tools.discover: Searching greenhouse with query: site:job-boards.greenhouse.io "full-stack"
-2026-10-28 16:23:24 [INFO] jobhunter.tools.discover: No search results found for greenhouse.
-2026-10-28 16:23:24 [INFO] jobhunter.tools.discover: Searching greenhouse with query: site:job-boards.greenhouse.io "fullstack"
-2026-10-28 16:23:26 [INFO] jobhunter.tools.discover: Found new valid slug for greenhouse: clara
-2026-10-28 16:23:26 [INFO] jobhunter.tools.discover: Found new valid slug for greenhouse: oura
-2026-10-28 16:23:26 [INFO] jobhunter.tools.discover: Found new valid slug for greenhouse: staffbase
-2026-10-28 16:23:27 [INFO] jobhunter.tools.discover: Found new valid slug for greenhouse: affirm
-2026-10-28 16:23:27 [INFO] jobhunter.tools.discover: Finished greenhouse: 4 new, 3 known.
-2026-10-28 16:23:28 [INFO] jobhunter.tools.discover: Searching greenhouse with query: site:job-boards.greenhouse.io "full stack"
-2026-10-28 16:23:31 [INFO] jobhunter.tools.discover: Found new valid slug for greenhouse: figma
-2026-10-28 16:23:31 [INFO] jobhunter.tools.discover: Found new valid slug for greenhouse: stackav
-2026-10-28 16:23:31 [INFO] jobhunter.tools.discover: Finished greenhouse: 2 new, 5 known.
-2026-10-28 16:23:33 [INFO] jobhunter.tools.discover: Searching greenhouse with query: site:job-boards.greenhouse.io "frontend"
-2026-10-28 16:23:35 [INFO] jobhunter.tools.discover: No search results found for greenhouse.
-2026-10-28 16:23:35 [INFO] jobhunter.tools.discover: Searching greenhouse with query: site:job-boards.greenhouse.io "front-end"
-2026-10-28 16:23:37 [INFO] jobhunter.tools.discover: No search results found for greenhouse.
-2026-10-28 16:23:37 [INFO] jobhunter.tools.discover: Searching greenhouse with query: site:job-boards.greenhouse.io "backend"
-2026-10-28 16:23:39 [INFO] jobhunter.tools.discover: Found new valid slug for greenhouse: otter
-2026-10-28 16:23:40 [INFO] jobhunter.tools.discover: Found new valid slug for greenhouse: future
-2026-10-28 16:23:40 [INFO] jobhunter.tools.discover: Found new valid slug for greenhouse: machinifyinc
-2026-10-28 16:23:40 [INFO] jobhunter.tools.discover: Found new valid slug for greenhouse: enterpret
-2026-10-28 16:23:40 [INFO] jobhunter.tools.discover: Finished greenhouse: 4 new, 3 known.
-2026-10-28 16:23:41 [INFO] jobhunter.tools.discover: Searching lever with query: site:lever.co "full-stack"
-2026-10-28 16:23:45 [INFO] jobhunter.tools.discover: Found new valid slug for lever: curai
-2026-10-28 16:23:45 [INFO] jobhunter.tools.discover: Finished lever: 1 new, 4 known.
-2026-10-28 16:23:47 [INFO] jobhunter.tools.discover: Searching lever with query: site:lever.co "fullstack"
-2026-10-28 16:23:56 [INFO] jobhunter.tools.discover: Found new valid slug for lever: kpler
-2026-10-28 16:23:56 [INFO] jobhunter.tools.discover: Finished lever: 1 new, 1 known.
-2026-10-28 16:23:58 [INFO] jobhunter.tools.discover: Searching lever with query: site:lever.co "full stack"
-2026-10-28 16:24:01 [INFO] jobhunter.tools.discover: Found new valid slug for lever: revealtech
-2026-10-28 16:24:02 [INFO] jobhunter.tools.discover: Finished lever: 1 new, 4 known.
-2026-10-28 16:24:03 [INFO] jobhunter.tools.discover: Searching lever with query: site:lever.co "frontend"
-2026-10-28 16:24:08 [INFO] jobhunter.tools.discover: Found new valid slug for lever: drivetrain
-2026-10-28 16:24:09 [INFO] jobhunter.tools.discover: Finished lever: 1 new, 1 known.
-2026-10-28 16:24:11 [INFO] jobhunter.tools.discover: Searching lever with query: site:lever.co "front-end"
-2026-10-28 16:24:15 [INFO] jobhunter.tools.discover: Found new valid slug for lever: mable
-2026-10-28 16:24:15 [INFO] jobhunter.tools.discover: Finished lever: 1 new, 2 known.
-2026-10-28 16:24:17 [INFO] jobhunter.tools.discover: Searching lever with query: site:lever.co "backend"
-2026-10-28 16:24:19 [INFO] jobhunter.tools.discover: No search results found for lever.
-2026-10-28 16:24:19 [INFO] jobhunter.tools.discover: Searching personio with query: site:personio.de "full-stack"
-2026-10-28 16:24:21 [INFO] jobhunter.tools.discover: Found new valid slug for personio: bookboost
-2026-10-28 16:24:22 [INFO] jobhunter.tools.discover: Found new valid slug for personio: jobleads
-2026-10-28 16:24:22 [INFO] jobhunter.tools.discover: Finished personio: 2 new, 4 known.
-2026-10-28 16:24:23 [INFO] jobhunter.tools.discover: Searching personio with query: site:personio.de "fullstack"
-2026-10-28 16:24:25 [INFO] jobhunter.tools.discover: No search results found for personio.
-2026-10-28 16:24:25 [INFO] jobhunter.tools.discover: Searching personio with query: site:personio.de "full stack"
-2026-10-28 16:24:27 [INFO] jobhunter.tools.discover: No search results found for personio.
-2026-10-28 16:24:27 [INFO] jobhunter.tools.discover: Searching personio with query: site:personio.de "frontend"
-2026-10-28 16:24:30 [INFO] jobhunter.tools.discover: No search results found for personio.
-2026-10-28 16:24:30 [INFO] jobhunter.tools.discover: Searching personio with query: site:personio.de "front-end"
-2026-10-28 16:24:32 [INFO] jobhunter.tools.discover: No search results found for personio.
-2026-10-28 16:24:32 [INFO] jobhunter.tools.discover: Searching personio with query: site:personio.de "backend"
-2026-10-28 16:24:34 [INFO] jobhunter.tools.discover: Finished personio: 0 new, 7 known.
-2026-10-28 16:24:35 [INFO] jobhunter.tools.discover: Searching personio with query: site:personio.com "full-stack"
-2026-10-28 16:24:37 [INFO] jobhunter.tools.discover: No search results found for personio.
-2026-10-28 16:24:37 [INFO] jobhunter.tools.discover: Searching personio with query: site:personio.com "fullstack"
-2026-10-28 16:24:40 [INFO] jobhunter.tools.discover: Ignored URL (no valid slug): https://www.personio.com/careers/3bf40ef0-469b-4cf9-a442-80d69ac515ab/
-2026-10-28 16:24:40 [INFO] jobhunter.tools.discover: Ignored URL (no valid slug): https://www.personio.com/careers/3994eea1-edac-40c7-886b-61a92dfa813d/
-2026-10-28 16:24:40 [INFO] jobhunter.tools.discover: Found new valid slug for personio: carbmee
-2026-10-28 16:24:40 [INFO] jobhunter.tools.discover: Finished personio: 1 new, 4 known.
-2026-10-28 16:24:41 [INFO] jobhunter.tools.discover: Searching personio with query: site:personio.com "full stack"
-2026-10-28 16:24:43 [INFO] jobhunter.tools.discover: No search results found for personio.
-2026-10-28 16:24:43 [INFO] jobhunter.tools.discover: Searching personio with query: site:personio.com "frontend"
-2026-10-28 16:24:45 [INFO] jobhunter.tools.discover: No search results found for personio.
-2026-10-28 16:24:45 [INFO] jobhunter.tools.discover: Searching personio with query: site:personio.com "front-end"
-2026-10-28 16:24:47 [INFO] jobhunter.tools.discover: No search results found for personio.
-2026-10-28 16:24:47 [INFO] jobhunter.tools.discover: Searching personio with query: site:personio.com "backend"
-2026-10-28 16:24:49 [INFO] jobhunter.tools.discover: Ignored URL (no valid slug): https://www.personio.com/careers/c13e3b10-be96-4349-9e92-ef42a5342a66/
-2026-10-28 16:24:49 [INFO] jobhunter.tools.discover: Found new valid slug for personio: chrono24
-2026-10-28 16:24:50 [INFO] jobhunter.tools.discover: Finished personio: 1 new, 4 known.
-2026-10-28 16:24:51 [INFO] jobhunter.tools.discover: Searching recruitee with query: site:recruitee.com "full-stack"
-2026-10-28 16:24:53 [INFO] jobhunter.tools.discover: Finished recruitee: 0 new, 6 known.
-2026-10-28 16:24:54 [INFO] jobhunter.tools.discover: Searching recruitee with query: site:recruitee.com "fullstack"
-2026-10-28 16:24:56 [INFO] jobhunter.tools.discover: No search results found for recruitee.
-2026-10-28 16:24:56 [INFO] jobhunter.tools.discover: Searching recruitee with query: site:recruitee.com "full stack"
-2026-10-28 16:24:58 [INFO] jobhunter.tools.discover: Finished recruitee: 0 new, 7 known.
-2026-10-28 16:24:59 [INFO] jobhunter.tools.discover: Searching recruitee with query: site:recruitee.com "frontend"
-2026-10-28 16:25:03 [INFO] jobhunter.tools.discover: Finished recruitee: 0 new, 6 known.
-2026-10-28 16:25:04 [INFO] jobhunter.tools.discover: Searching recruitee with query: site:recruitee.com "front-end"
-2026-10-28 16:25:06 [INFO] jobhunter.tools.discover: No search results found for recruitee.
-2026-10-28 16:25:06 [INFO] jobhunter.tools.discover: Searching recruitee with query: site:recruitee.com "backend"
-2026-10-28 16:25:08 [INFO] jobhunter.tools.discover: No search results found for recruitee.
-2026-10-28 16:25:08 [INFO] jobhunter.tools.discover: Searching workable with query: site:apply.workable.com "full-stack"
-2026-10-28 16:25:10 [INFO] jobhunter.tools.discover: No search results found for workable.
-2026-10-28 16:25:10 [INFO] jobhunter.tools.discover: Searching workable with query: site:apply.workable.com "fullstack"
-2026-10-28 16:25:12 [INFO] jobhunter.tools.discover: No search results found for workable.
-2026-10-28 16:25:12 [INFO] jobhunter.tools.discover: Searching workable with query: site:apply.workable.com "full stack"
-2026-10-28 16:25:15 [INFO] jobhunter.tools.discover: No search results found for workable.
-2026-10-28 16:25:15 [INFO] jobhunter.tools.discover: Searching workable with query: site:apply.workable.com "frontend"
-2026-10-28 16:25:18 [INFO] jobhunter.tools.discover: Found new valid slug for workable: robusta
-2026-10-28 16:25:18 [INFO] jobhunter.tools.discover: Found new valid slug for workable: optiplay-io
-2026-10-28 16:25:18 [INFO] jobhunter.tools.discover: Finished workable: 2 new, 5 known.
-2026-10-28 16:25:20 [INFO] jobhunter.tools.discover: Searching workable with query: site:apply.workable.com "front-end"
-2026-10-28 16:25:23 [INFO] jobhunter.tools.discover: No search results found for workable.
-2026-10-28 16:25:23 [INFO] jobhunter.tools.discover: Searching workable with query: site:apply.workable.com "backend"
-2026-10-28 16:25:26 [INFO] jobhunter.tools.discover: Found new valid slug for workable: matternet
-2026-10-28 16:25:26 [INFO] jobhunter.tools.discover: Found new valid slug for workable: modash
-2026-10-28 16:25:27 [INFO] jobhunter.tools.discover: Found new valid slug for workable: origin-10x
-2026-10-28 16:25:27 [INFO] jobhunter.tools.discover: Found new valid slug for workable: gathern
-2026-10-28 16:25:27 [INFO] jobhunter.tools.discover: Found new valid slug for workable: maxana
-2026-10-28 16:25:27 [INFO] jobhunter.tools.discover: Found new valid slug for workable: hellogov
-2026-10-28 16:25:27 [INFO] jobhunter.tools.discover: Found new valid slug for workable: openfn
-2026-10-28 16:25:27 [INFO] jobhunter.tools.discover: Finished workable: 7 new, 0 known.
-2026-10-28 16:25:29 [INFO] jobhunter.tools.discover: Processing discovery results...
-2026-10-28 16:25:29 [INFO] jobhunter.tools.discover: Successfully saved new company slugs to config.json.
-2026-10-28 16:25:29 [INFO] jobhunter.tools.discover: Discovery pipeline finished...
-2026-10-28 16:26:43 [INFO] jobhunter.pipeline.fetch: Starting job fetch pipeline...
-2026-10-28 16:26:43 [INFO] jobhunter.pipeline.fetch: Building fetch tasks...
-2026-10-28 16:26:43 [INFO] jobhunter.pipeline.fetch: Generated 54 fetch tasks.
-2026-10-28 16:26:43 [INFO] jobhunter.pipeline.fetch: Executing fetch tasks with 8 workers...
-2026-10-28 16:26:50 [INFO] jobhunter.pipeline.fetch: Successfully fetched 6022 raw jobs.
-2026-10-28 16:26:50 [INFO] jobhunter.pipeline.fetch: Filtering and deduplicating jobs...
-2026-10-28 16:26:57 [INFO] jobhunter.pipeline.fetch: Filtering complete: 2 passed, 71 skipped (seen), 5949 failed filters.
-2026-10-28 16:26:57 [INFO] jobhunter.pipeline.fetch: Scoring and sorting passing jobs...
-2026-10-28 16:26:57 [INFO] jobhunter.pipeline.fetch: Enforcing limits and generating final candidates...
-2026-10-28 16:26:57 [INFO] jobhunter.pipeline.fetch: Generated 2 candidates. Cut 0 jobs over the cap.
-2026-10-28 16:26:57 [INFO] jobhunter.pipeline.fetch: Successfully saved 2 candidates to disk.
-2026-10-28 16:26:57 [INFO] jobhunter.pipeline.fetch: Fetch pipeline completed. Raw: 6022 | Seen: 71 | Failed Filters: 5949 | Cut: 0 | Candidates: 2
-2026-10-28 16:27:08 [INFO] jobhunter.tools.prune: === Starting prune process ===
-2026-10-28 16:27:08 [INFO] jobhunter.tools.prune: Resolving sources for pruning...
-2026-10-28 16:27:08 [INFO] jobhunter.tools.prune: Executing prune validation loop...
-2026-10-28 16:27:08 [INFO] jobhunter.tools.prune: Starting prune check for source: personio
-2026-10-28 16:27:22 [INFO] jobhunter.tools.prune: Starting prune check for source: greenhouse
-2026-10-28 16:27:53 [INFO] jobhunter.tools.prune: Starting prune check for source: lever
-2026-10-28 16:29:18 [INFO] jobhunter.tools.prune: Starting prune check for source: recruitee
-2026-10-28 16:29:26 [INFO] jobhunter.tools.prune: Starting prune check for source: workable
-2026-10-28 16:29:37 [INFO] jobhunter.tools.prune: Prune complete. No broken slugs found.
-2026-10-28 16:34:23 [INFO] jobhunter.tools.prune: === Starting prune process ===
-2026-10-28 16:34:23 [INFO] jobhunter.tools.prune: Resolving sources for pruning...
-2026-10-28 16:34:23 [INFO] jobhunter.tools.prune: Executing prune validation loop...
-2026-10-28 16:34:23 [INFO] jobhunter.tools.prune: Starting prune check for source: personio
-2026-10-28 16:34:23 [INFO] jobhunter.tools.prune: Removing invalid slug '' from personio
-2026-10-28 16:34:24 [INFO] jobhunter.tools.prune: Removing invalid slug 'athereons' from personio
-2026-10-28 16:34:38 [INFO] jobhunter.tools.prune: Dry run complete. Found 2 broken slugs.
-2026-10-28 16:34:38 [INFO] jobhunter.tools.prune: Prune process finished...
+2026-10-29 06:14:00 [INFO] jobhunter.tools.prune: === Starting prune process ===
+2026-10-29 06:14:00 [INFO] jobhunter.tools.prune: Resolving sources for pruning...
+2026-10-29 06:14:00 [INFO] jobhunter.tools.prune: Executing prune validation loop...
+2026-10-29 06:14:00 [INFO] jobhunter.tools.prune: Starting prune check for source: personio
+2026-10-29 06:14:13 [INFO] jobhunter.tools.prune: Prune complete. No broken slugs found.
+2026-10-29 06:14:40 [INFO] jobhunter.pipeline.fetch: Starting job fetch pipeline...
+2026-10-29 06:14:40 [INFO] jobhunter.pipeline.fetch: Building fetch tasks...
+2026-10-29 06:14:40 [INFO] jobhunter.pipeline.fetch: Generated 54 fetch tasks.
+2026-10-29 06:14:40 [INFO] jobhunter.pipeline.fetch: Executing fetch tasks with 8 workers...
+2026-10-29 06:14:47 [INFO] jobhunter.pipeline.fetch: Successfully fetched 6013 raw jobs.
+2026-10-29 06:14:47 [INFO] jobhunter.pipeline.fetch: Filtering and deduplicating jobs...
+2026-10-29 06:14:54 [INFO] jobhunter.pipeline.fetch: Filtering complete: 2 passed, 69 skipped (seen), 5942 failed filters.
+2026-10-29 06:14:54 [INFO] jobhunter.pipeline.fetch: Scoring and sorting passing jobs...
+2026-10-29 06:14:54 [INFO] jobhunter.pipeline.fetch: Enforcing limits and generating final candidates...
+2026-10-29 06:14:54 [INFO] jobhunter.pipeline.fetch: Generated 2 candidates. Cut 0 jobs over the cap.
+2026-10-29 06:14:54 [INFO] jobhunter.pipeline.fetch: Successfully saved 2 candidates to disk.
+2026-10-29 06:14:54 [INFO] jobhunter.pipeline.fetch: Fetch pipeline completed. Raw: 6013 | Seen: 69 | Failed Filters: 5942 | Cut: 0 | Candidates: 2
+2026-10-29 06:20:41 [INFO] jobhunter.pipeline.fetch: Starting job fetch pipeline...
+2026-10-29 06:20:41 [INFO] jobhunter.pipeline.fetch: Building fetch tasks...
+2026-10-29 06:20:41 [INFO] jobhunter.pipeline.fetch: Generated 163 fetch tasks.
+2026-10-29 06:20:41 [INFO] jobhunter.pipeline.fetch: Executing fetch tasks with 8 workers...
+2026-10-29 06:21:29 [INFO] jobhunter.pipeline.fetch: Successfully fetched 21479 raw jobs.
+2026-10-29 06:21:29 [INFO] jobhunter.pipeline.fetch: Filtering and deduplicating jobs...
+2026-10-29 06:21:53 [INFO] jobhunter.pipeline.fetch: Filtering complete: 127 passed, 540 skipped (seen), 20812 failed filters.
+2026-10-29 06:21:53 [INFO] jobhunter.pipeline.fetch: Scoring and sorting passing jobs...
+2026-10-29 06:21:53 [INFO] jobhunter.pipeline.fetch: Enforcing limits and generating final candidates...
+2026-10-29 06:21:53 [INFO] jobhunter.pipeline.fetch: Generated 50 candidates. Cut 77 jobs over the cap.
+2026-10-29 06:21:53 [INFO] jobhunter.pipeline.fetch: Successfully saved 50 candidates to disk.
+2026-10-29 06:21:53 [INFO] jobhunter.pipeline.fetch: Fetch pipeline completed. Raw: 21479 | Seen: 540 | Failed Filters: 20812 | Cut: 77 | Candidates: 50
+2026-10-29 06:31:48 [INFO] jobhunter.pipeline.fetch: Starting job fetch pipeline...
+2026-10-29 06:31:48 [INFO] jobhunter.pipeline.fetch: Building fetch tasks...
+2026-10-29 06:31:48 [INFO] jobhunter.pipeline.fetch: Generated 163 fetch tasks.
+2026-10-29 06:31:48 [INFO] jobhunter.pipeline.fetch: Executing fetch tasks with 8 workers...
+2026-10-29 06:32:34 [INFO] jobhunter.pipeline.fetch: Successfully fetched 21479 raw jobs.
+2026-10-29 06:32:34 [INFO] jobhunter.pipeline.fetch: Filtering and deduplicating jobs...
+2026-10-29 06:32:58 [INFO] jobhunter.pipeline.fetch: Filtering complete: 128 passed, 0 skipped (seen), 540 dupes, 20811 failed filters.
+2026-10-29 06:32:58 [INFO] jobhunter.pipeline.fetch: Scoring and sorting passing jobs...
+2026-10-29 06:32:58 [INFO] jobhunter.pipeline.fetch: Enforcing limits and generating final candidates...
+2026-10-29 06:32:58 [INFO] jobhunter.pipeline.fetch: Generated 50 candidates. Cut 78 jobs over the cap.
+2026-10-29 06:32:58 [INFO] jobhunter.pipeline.fetch: Successfully saved 50 candidates to disk.
+2026-10-29 06:32:58 [INFO] jobhunter.pipeline.fetch: Fetch pipeline completed. Raw: 21479 | Seen: 0 | Dupe: 540 | Failed Filters: 20811 | Cut: 78 | Candidates: 50
+2026-10-29 06:34:09 [INFO] jobhunter.pipeline.fetch: Starting job fetch pipeline...
+2026-10-29 06:34:09 [INFO] jobhunter.pipeline.fetch: Building fetch tasks...
+2026-10-29 06:34:09 [INFO] jobhunter.pipeline.fetch: Generated 163 fetch tasks.
+2026-10-29 06:34:09 [INFO] jobhunter.pipeline.fetch: Executing fetch tasks with 8 workers...
+2026-10-29 06:35:05 [INFO] jobhunter.pipeline.fetch: Successfully fetched 21480 raw jobs.
+2026-10-29 06:35:05 [INFO] jobhunter.pipeline.fetch: Filtering and deduplicating jobs...
+2026-10-29 06:35:30 [INFO] jobhunter.pipeline.fetch: Filtering complete: 126 passed, 0 skipped (seen), 540 dupes, 20814 failed filters.
+2026-10-29 06:35:30 [INFO] jobhunter.pipeline.fetch: Scoring and sorting passing jobs...
+2026-10-29 06:35:30 [INFO] jobhunter.pipeline.fetch: Enforcing limits and generating final candidates...
+2026-10-29 06:35:30 [INFO] jobhunter.pipeline.fetch: Generated 50 candidates. Cut 76 jobs over the cap.
+2026-10-29 06:35:30 [INFO] jobhunter.pipeline.fetch: Successfully saved 50 candidates to disk.
+2026-10-29 06:35:30 [INFO] jobhunter.pipeline.fetch: Fetch pipeline completed. Raw: 21480 | Seen: 0 | Dupe: 540 | Failed Filters: 20814 | Cut: 76 | Candidates: 50

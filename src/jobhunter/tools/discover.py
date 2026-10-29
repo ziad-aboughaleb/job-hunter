@@ -5,7 +5,7 @@ from typing import Any
 from ddgs import DDGS
 
 from jobhunter.core.logger import console, get_logger
-from jobhunter.core.paths import read, write
+from jobhunter.core.paths import CONFIG_PATH, read, write
 from jobhunter.core.settings import settings
 from jobhunter.sources import SOURCES
 from jobhunter.sources.base import SlugStatus
@@ -223,7 +223,7 @@ def update_and_save_config(new_slugs: dict[str, set[str]], write_flag: bool):
     console.print("\n[yellow]No new company slugs found.[/yellow]")
     return
 
-  raw_config = read("config/config.json", dict)
+  raw_config = read(CONFIG_PATH / "config.json", dict)
   raw_config.setdefault("companies", {})
 
   console.print("\n[bold]Discovery Summary:[/bold]")
@@ -235,7 +235,7 @@ def update_and_save_config(new_slugs: dict[str, set[str]], write_flag: bool):
       raw_config["companies"][name] = sorted(existing)
 
   if write_flag:
-    write("config/config.json", raw_config)
+    write(CONFIG_PATH / "config.json", raw_config)
     logger.info("Successfully saved new company slugs to config.json.")
     console.print("\n[bold green]Successfully saved to config.json![/bold green]")
   else:

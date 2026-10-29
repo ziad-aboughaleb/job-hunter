@@ -5,7 +5,7 @@ from rich.table import Column
 
 from jobhunter.core.filters import count_stack_hits, passes_all_filters
 from jobhunter.core.logger import console, get_logger
-from jobhunter.core.paths import delete, read, write
+from jobhunter.core.paths import DATA_PATH, delete, read, write
 from jobhunter.core.settings import settings
 from jobhunter.models import Candidate, Job
 from jobhunter.sources import SOURCES
@@ -76,15 +76,16 @@ def execute_fetch_tasks(tasks: list[tuple]) -> list[Job]:
   return fetched_jobs
 
 
-def filter_and_dedupe_jobs(fetched_jobs: list[Job], ignore_seen: bool) -> tuple[list[Job], int, int]:
+def filter_and_dedupe_jobs(fetched_jobs: list[Job], ignore_seen: bool) -> tuple[list[Job], int, int, int]:
   """Removes previously seen jobs, cross-source duplicates, and jobs failing filters."""
   logger.info("Filtering and deduplicating jobs...")
   console.print("[dim cyan]Filtering and deduplicating jobs...[/dim cyan]")
 
-  seen_data = read("data/seen.json", dict)
+  seen_data = read(DATA_PATH / "seen.json", dict)
 
   new_passing_jobs = []
   skipped_seen = 0
+  skipped_dupes = 0
   skipped_filters = 0
 
   run_seen_roles = set()
@@ -102,7 +103,7 @@ def filter_and_dedupe_jobs(fetched_jobs: list[Job], ignore_seen: bool) -> tuple[
     role_key = f"{company}:{title}:{location}"
 
     if role_key in run_seen_roles and not ignore_seen:
-      skipped_seen += 1
+      skipped_dupes += 1
       continue
 
     run_seen_roles.add(role_key)
@@ -112,8 +113,8 @@ def filter_and_dedupe_jobs(fetched_jobs: list[Job], ignore_seen: bool) -> tuple[
     else:
       skipped_filters += 1
 
-  logger.info(f"Filtering complete: {len(new_passing_jobs)} passed, {skipped_seen} skipped (seen), {skipped_filters} failed filters.")
-  return new_passing_jobs, skipped_seen, skipped_filters
+  logger.info(f"Filtering complete: {len(new_passing_jobs)} passed, {skipped_seen} skipped (seen), {skipped_dupes} dupes, {skipped_filters} failed filters.")
+  return new_passing_jobs, skipped_seen, skipped_dupes, skipped_filters
 
 
 def score_and_sort_jobs(jobs: list[Job]) -> list[Job]:
@@ -131,13 +132,13 @@ def score_and_sort_jobs(jobs: list[Job]) -> list[Job]:
   return [item[0] for item in scored_jobs]
 
 
-def cap_and_format_candidates(sorted_jobs: list[Job]) -> tuple[list[Candidate], int]:
+def cap_and_format_candidates(sorted_jobs: list[Job], limit: int | None = None) -> tuple[list[Candidate], int]:
   """Enforces the max candidate limit and converts Jobs into final Candidates."""
   logger.info("Enforcing limits and generating final candidates...")
   console.print("[dim cyan]Enforcing candidate limits...[/dim cyan]")
 
   priority_companies = {c.lower() for c in settings.filters.company_priority}
-  max_candidates = settings.limits.max_candidates_per_run
+  max_candidates = limit or settings.limits.max_candidates_per_run
 
   final_passing_jobs = []
   non_priority_count = 0
@@ -166,19 +167,7 @@ def cap_and_format_candidates(sorted_jobs: list[Job]) -> tuple[list[Candidate], 
   return final_candidates, cut_over_cap
 
 
-def print_summary(raw_count: int, skipped_seen: int, skipped_filters: int, cut_over_cap: int, new_candidates: int):
-  """Prints the final summary box to the console."""
-  console.print("\n[bold]Fetch Summary[/bold]")
-  console.print("──────────────────────────────")
-  console.print(f"Total raw jobs  : [cyan]{raw_count}[/cyan]")
-  console.print(f"Skipped (sent)  : [yellow]{skipped_seen}[/yellow]")
-  console.print(f"Failed filters  : [magenta]{skipped_filters}[/magenta]")
-  console.print(f"Cut over cap    : [yellow]{cut_over_cap}[/yellow]")
-  console.print(f"New candidates  : [bold green]{new_candidates}[/bold green]")
-  console.print("──────────────────────────────\n")
-
-
-def main(source_name: str | None = None, no_aggregators: bool = False, ignore_seen: bool = False):
+def main(source_name: str | None = None, no_aggregators: bool = False, ignore_seen: bool = False, limit: int | None = None):
   """Orchestrates the job fetching, filtering, and candidate generation pipeline."""
   logger.info("Starting job fetch pipeline...")
 
@@ -193,27 +182,29 @@ def main(source_name: str | None = None, no_aggregators: bool = False, ignore_se
   fetched_jobs = execute_fetch_tasks(tasks)
 
   # 3. Filter
-  passing_jobs, skipped_seen, skipped_filters = filter_and_dedupe_jobs(fetched_jobs, ignore_seen)
+  passing_jobs, skipped_seen, skipped_dupes, skipped_filters = filter_and_dedupe_jobs(fetched_jobs, ignore_seen)
 
   # 4. Score
   sorted_jobs = score_and_sort_jobs(passing_jobs)
 
   # 5. Cap & Format
-  final_candidates, cut_over_cap = cap_and_format_candidates(sorted_jobs)
+  final_candidates, cut_over_cap = cap_and_format_candidates(sorted_jobs, limit)
 
   # 6. Save
-  delete("data/candidates.json")
+  delete(DATA_PATH / "candidates.json")
   if final_candidates:
-    write("data/candidates.json", final_candidates)
+    write(DATA_PATH / "candidates.json", final_candidates)
     logger.info(f"Successfully saved {len(final_candidates)} candidates to disk.")
 
   # 7. Report
-  logger.info(
-    f"Fetch pipeline completed. Raw: {len(fetched_jobs)} | "
-    f"Seen: {skipped_seen} | Failed Filters: {skipped_filters} | "
-    f"Cut: {cut_over_cap} | Candidates: {len(final_candidates)}"
-  )
+  logger.info(f"Fetch pipeline completed. Raw: {len(fetched_jobs)} | Seen: {skipped_seen} | Dupe: {skipped_dupes} | Failed Filters: {skipped_filters} | Cut: {cut_over_cap} | Candidates: {len(final_candidates)}")
 
-  print_summary(
-    raw_count=len(fetched_jobs), skipped_seen=skipped_seen, skipped_filters=skipped_filters, cut_over_cap=cut_over_cap, new_candidates=len(final_candidates)
-  )
+  console.print("\n[bold]Fetch Summary[/bold]")
+  console.print("──────────────────────────────")
+  console.print(f"Total raw jobs  : [cyan]{len(fetched_jobs)}[/cyan]")
+  console.print(f"Skipped (seen)  : [yellow]{skipped_seen}[/yellow]")
+  console.print(f"Skipped (dupe)  : [yellow]{skipped_dupes}[/yellow]")
+  console.print(f"Failed filters  : [magenta]{skipped_filters}[/magenta]")
+  console.print(f"Cut over cap    : [yellow]{cut_over_cap}[/yellow]")
+  console.print(f"New candidates  : [bold green]{len(final_candidates)}[/bold green]")
+  console.print("──────────────────────────────\n")

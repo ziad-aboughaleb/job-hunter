@@ -17,9 +17,7 @@ def _should_retry(e: httpx.HTTPError) -> bool:
   return isinstance(e, httpx.RequestError)
 
 
-def fetch_json(
-  url: str, headers: dict | None = None, timeout: float = 15.0, retries: int = 3, backoff: float = 1.5, expected_type: type | None = None, **kwargs
-) -> list | dict:
+def fetch_json(url: str, headers: dict | None = None, timeout: float = 15.0, retries: int = 3, backoff: float = 1.5, expected_type: type | None = None, **kwargs) -> list | dict:
   """Fetches JSON data from a given URL with optional headers, timeout, retries, and backoff."""
   if retries <= 0:
     raise ValueError("retries must be at least 1")

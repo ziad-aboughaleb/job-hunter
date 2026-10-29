@@ -306,29 +306,31 @@
     "seen_retention_days": 90,
     "fetch_workers": 8
   },
-  "score_threshold": 50,
-  "scoring_weights": [
-    {
-      "name": "Core skills overlap",
-      "weight": 50,
-      "what": "required technologies and skills that the CV demonstrates"
-    },
-    {
-      "name": "Experience and seniority fit",
-      "weight": 20,
-      "what": "years and level compared with CV (treat requirements of 1-3 years as a fit for practical project experience)"
-    },
-    {
-      "name": "Role type and location fit",
-      "weight": 20,
-      "what": "title fit, and a work arrangement and location that suit the candidate"
-    },
-    {
-      "name": "Nice-to-haves",
-      "weight": 10,
-      "what": "secondary tools, methodologies and soft skills"
-    }
-  ],
+  "evaluating": {
+    "score_threshold": 65,
+    "scoring_weights": [
+      {
+        "name": "Core skills overlap",
+        "weight": 50,
+        "what": "required technologies and skills that the CV demonstrates"
+      },
+      {
+        "name": "Experience and seniority fit",
+        "weight": 20,
+        "what": "years and level compared with cv and prefrences"
+      },
+      {
+        "name": "Role type and location fit",
+        "weight": 20,
+        "what": "title fit, and a work arrangement and location that suit the candidate"
+      },
+      {
+        "name": "Nice-to-haves",
+        "weight": 10,
+        "what": "secondary tools, methodologies and soft skills"
+      }
+    ]
+  },
   "llm": {
     "provider": "openai",
     "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",

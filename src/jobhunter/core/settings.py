@@ -3,7 +3,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from .paths import get_project_root, read
+from .paths import CONFIG_PATH, get_project_root, read
 
 
 class ProfileConfig(BaseModel):
@@ -38,6 +38,11 @@ class ScoringWeight(BaseModel):
   what: str
 
 
+class EvaluatingConfig(BaseModel):
+  score_threshold: int = 65
+  scoring_weights: list[ScoringWeight] = Field(default_factory=list)
+
+
 class LLMConfig(BaseModel):
   provider: str = "openai"
   base_url: str | None = None
@@ -66,8 +71,7 @@ class Settings(BaseSettings):
   filters: FiltersConfig = Field(default_factory=FiltersConfig)
   limits: LimitsConfig = Field(default_factory=LimitsConfig)
 
-  score_threshold: int = 75
-  scoring_weights: list[ScoringWeight] = Field(default_factory=list)
+  evaluating: EvaluatingConfig = Field(default_factory=EvaluatingConfig)
 
   llm: LLMConfig = Field(default_factory=LLMConfig)
   telegram: TelegramConfig = Field(default_factory=TelegramConfig)
@@ -83,7 +87,7 @@ def load_settings() -> Settings:
   config_dir = get_project_root() / "config"
 
   # Load JSON
-  config_data = read("config/config.json", dict)
+  config_data = read(CONFIG_PATH / "config.json", dict)
 
   # Remove "_help"
   config_data.pop("_help", None)

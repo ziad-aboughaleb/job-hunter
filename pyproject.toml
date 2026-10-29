@@ -9,6 +9,7 @@ dependencies = [
   "ddgs>=9.16.1",
   "filelock>=4.2.4",
   "httpx>=0.28.1",
+  "openai>=3.41.0",
   "pydantic>=2.14.1",
   "pydantic-settings>=2.16.1",
   "rich>=15.0.0",
@@ -27,7 +28,7 @@ build-backend = "uv_build"
 
 # ruff formater settings
 [tool.ruff]
-line-length = 160
+line-length = 999
 indent-width = 2
 
 [tool.ruff.lint]

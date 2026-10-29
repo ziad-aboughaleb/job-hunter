@@ -1,7 +1,7 @@
 from typing import Any
 
 from jobhunter.core.logger import console, get_logger
-from jobhunter.core.paths import read, write
+from jobhunter.core.paths import CONFIG_PATH, read, write
 from jobhunter.sources import SOURCES
 from jobhunter.sources.base import SlugStatus
 
@@ -11,6 +11,8 @@ logger = get_logger(__name__, log_to_console=False)
 def get_target_sources(raw_config: dict, source_name: str | None) -> dict[str, list[str]]:
   """Retrieves the companies to be pruned from the config based on CLI filters."""
   logger.info("Resolving sources for pruning...")
+  console.print("")
+
   companies = raw_config.get("companies", {})
 
   if not companies:
@@ -86,7 +88,7 @@ def save_pruned_config(raw_config: dict, new_companies: dict, removed_count: int
     raw_config["companies"][name] = slugs
 
   if write_flag:
-    write("config/config.json", raw_config)
+    write(CONFIG_PATH / "config.json", raw_config)
     logger.info(f"Successfully pruned {removed_count} broken slugs from config.json.")
     console.print(f"\n[bold green]Successfully pruned {removed_count} broken slugs and saved config.json![/bold green]")
   else:
@@ -96,11 +98,11 @@ def save_pruned_config(raw_config: dict, new_companies: dict, removed_count: int
 
 def main(write_flag: bool = False, source_name: str | None = None):
   """Prunes definitively broken or non-existent company slugs from config.json."""
-  logger.info("=== Starting prune process ===")
+  logger.info("Starting prune process...")
   console.print("[bold cyan]Pruning broken company slugs from config.json...[/bold cyan]")
 
   # 1. Setup
-  raw_config = read("config/config.json", dict)
+  raw_config = read(CONFIG_PATH / "config.json", dict)
   target_sources = get_target_sources(raw_config, source_name)
 
   if not target_sources:
