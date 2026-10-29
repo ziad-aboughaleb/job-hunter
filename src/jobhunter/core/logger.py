@@ -38,7 +38,7 @@ def setup_logging(level: str = "INFO", log_file: str = "logs/jobhunter.log") -> 
     force=True,
   )
 
-  for noisy_logger in ("ddgs", "primp", "httpx", "httpcore", "urllib3"):
+  for noisy_logger in ("openai._base_client", "openai", "ddgs", "primp", "httpx", "httpcore", "urllib3"):
     logging.getLogger(noisy_logger).setLevel(logging.WARNING)
 
 

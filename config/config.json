@@ -288,6 +288,15 @@
     "company_exclude": [],
     "company_priority": [],
     "require_remote": true,
+    "remote_keywords": [
+      "remote",
+      "wfh",
+      "work from home",
+      "anywhere",
+      "telecommute",
+      "fully remote",
+      "100% remote"
+    ],
     "location_exclude_terms": [
       "us only",
       "us-only",
@@ -296,7 +305,7 @@
       "uk only",
       "must reside in"
     ],
-    "location_allow_terms": [],
+    "location_allow_terms": ["worldwide", "emea", "anywhere", "global"],
     "location_require_terms": [],
     "max_age_days": 14
   },
@@ -335,8 +344,10 @@
     "provider": "openai",
     "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
     "model": "gemini-3.5-flash-lite",
-    "api_key_env": "LLM_API_KEY",
-    "request_delay": 5
+    "request_delay": 5,
+    "max_workers": 1,
+    "temperature": 0.0,
+    "timeout": 600
   },
   "telegram": {
     "link_preview": false,

@@ -1,7 +1,7 @@
 import concurrent.futures
-import os
 import time
 
+import openai
 from openai import OpenAI
 from pydantic import ValidationError
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
@@ -18,17 +18,21 @@ logger = get_logger(__name__, log_to_console=False)
 
 def setup_llm_client() -> OpenAI:
   """Initializes the OpenAI client (supports local Ollama/vLLM via base_url)."""
-  api_key = os.getenv(settings.llm.api_key_env, "sk-dummy")
+  logger.info("Initializing LLM client...")
+
+  if not settings.llm_api_key:
+    logger.error("LLM API key is missing. Set LLM_API_KEY in your .env file.")
+    raise ValueError("LLM_API_KEY is empty. Check your .env file.")
 
   return OpenAI(
-    api_key=api_key,
+    api_key=settings.llm_api_key,
     base_url=settings.llm.base_url,
   )
 
 
-def load_pending_candidates() -> list[Candidate]:
-  """Loads un-evaluated candidates from disk."""
-  logger.info("Loading candidates for evaluation...")
+def load_all_candidates() -> list[Candidate]:
+  """Loads all candidates from disk."""
+  logger.info("Loading candidates...")
   raw_data = read(DATA_PATH / "candidates.json", list)
 
   candidates = []
@@ -38,11 +42,7 @@ def load_pending_candidates() -> list[Candidate]:
     except Exception as e:
       logger.error(f"Failed to parse candidate {item.get('uid', 'unknown')}: {e}")
 
-  # Only evaluate jobs that haven't been processed yet
-  pending = [c for c in candidates if c.status == "pending"]
-
-  logger.info(f"Loaded {len(pending)} pending candidates out of {len(candidates)} total.")
-  return pending
+  return candidates
 
 
 def evaluate_single_job(client: OpenAI, system_prompt: str, candidate: Candidate) -> tuple[Candidate, EvaluationResult | None]:
@@ -59,11 +59,17 @@ def evaluate_single_job(client: OpenAI, system_prompt: str, candidate: Candidate
     )
 
     raw_json = response.choices[0].message.content
+    if not raw_json:
+      raise ValueError("LLM returned empty content instead of JSON.")
 
-    # Pydantic strictly validates that the AI followed your schema
     eval_result = EvaluationResult.model_validate_json(raw_json)
     return candidate, eval_result
 
+  except openai.BadRequestError as e:
+    console.print("\n--- API ERROR DETAILS ---")
+    console.print(e.response.json())
+    console.print("-------------------------\n")
+    raise
   except ValidationError as ve:
     logger.error(f"AI returned invalid schema for {candidate.company}: {ve}")
     return candidate, None
@@ -73,13 +79,15 @@ def evaluate_single_job(client: OpenAI, system_prompt: str, candidate: Candidate
 
 
 def execute_evaluation_pipeline(client: OpenAI, candidates: list[Candidate], system_prompt: str) -> list[tuple[Candidate, EvaluationResult | None]]:
-  """Runs evaluations concurrently with a rich progress bar."""
+  """Runs evaluations concurrently for all provided candidates."""
 
-  # Be careful not to DDoS your LLM. Local models or strict APIs need lower concurrency.
-  max_workers = 3
+  max_workers = settings.llm.max_workers
   results: list[tuple[Candidate, EvaluationResult | None]] = []
 
-  console.print(f"[bold cyan]Evaluating {len(candidates)} jobs with AI...[/bold cyan]")
+  target_total = len(candidates)
+  candidate_iter = iter(candidates)
+
+  console.print(f"[bold cyan]Evaluating {target_total} jobs with AI...[/bold cyan]")
 
   with Progress(
     SpinnerColumn("dots", style="cyan"),
@@ -90,29 +98,49 @@ def execute_evaluation_pipeline(client: OpenAI, candidates: list[Candidate], sys
     expand=True,
     console=console,
   ) as progress:
-    eval_task = progress.add_task("[cyan]Evaluating...", total=len(candidates))
+    eval_task = progress.add_task("[cyan]Starting evaluation...", total=target_total)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-      future_to_candidate = {executor.submit(evaluate_single_job, client, system_prompt, c): c for c in candidates}
+      future_to_candidate = {}
 
-      for future in concurrent.futures.as_completed(future_to_candidate):
-        candidate = future_to_candidate[future]
-
+      def submit_next():
+        """Helper to pull the next candidate and submit it to the pool."""
         try:
-          result = future.result()
-          results.append(result)
+          c = next(candidate_iter)
+          future = executor.submit(evaluate_single_job, client, system_prompt, c)
+          future_to_candidate[future] = c
+        except StopIteration:
+          pass
 
-          # Update UI
-          company = candidate.company
-          score = result[1].score if result[1] else "ERR"
-          color = "green" if isinstance(score, int) and score >= settings.score_threshold else "yellow"
+      for _ in range(min(max_workers, target_total)):
+        submit_next()
 
-          progress.update(eval_task, advance=1, description=f"[cyan]Evaluating... [dim](Finished {company} - [{color}]{score}[/{color}][/dim])")
-        except Exception as e:
-          logger.exception(f"Unhandled error processing future for {candidate.company}: {e}")
-          progress.update(eval_task, advance=1)
+      while future_to_candidate:
+        done, _ = concurrent.futures.wait(future_to_candidate.keys(), return_when=concurrent.futures.FIRST_COMPLETED)
 
-        # Simple delay to respect API rate limits
+        for future in done:
+          candidate = future_to_candidate.pop(future)
+
+          try:
+            result = future.result()
+            results.append(result)
+
+            if result[1] is not None:
+              company = candidate.company
+              score = result[1].score
+              color = "green" if score >= settings.evaluating.score_threshold else "yellow"
+
+              progress.update(eval_task, advance=1, description=f"[cyan]Evaluating... [dim](Finished {company} - [{color}]{score}[/{color}][/dim])")
+            else:
+              progress.update(eval_task, advance=1)
+              progress.console.print(f"  [dim red]⚠ API Error for {candidate.company}. Skipping...[/dim red]")
+
+          except Exception as e:
+            logger.exception(f"Unhandled error for {candidate.company}: {e}")
+            progress.update(eval_task, advance=1)
+
+          submit_next()
+
         time.sleep(settings.llm.request_delay)
 
     progress.update(eval_task, description="[bold green]Evaluation complete![/bold green]")
@@ -120,87 +148,88 @@ def execute_evaluation_pipeline(client: OpenAI, candidates: list[Candidate], sys
   return results
 
 
-def process_and_save_results(results: list[tuple[Candidate, EvaluationResult | None]]):
-  """Updates candidate status based on AI output and saves to disk."""
+def process_and_save_results(results: list[tuple[Candidate, EvaluationResult | None]], all_candidates: list[Candidate]) -> tuple[int, int, int, int]:
+  """Saves successful evals to evaluation.json and keeps remaining in candidates.json."""
   logger.info("Processing LLM results and saving...")
-  console.print("\n[dim cyan]Saving evaluated candidates to disk...[/dim cyan]")
+  console.print("[dim cyan]Saving evaluated candidates to disk...[/dim cyan]")
 
-  final_candidates = []
   passed = 0
   hard_failed = 0
   low_score = 0
   errors = 0
 
+  evaluated_data = read(DATA_PATH / "evaluated.json", list)
+  evaluated_uids = set()
+
   for candidate, evaluation in results:
     if not evaluation:
-      # Keep as pending if the AI API failed, so it retries next run
       errors += 1
-      final_candidates.append(candidate)
       continue
 
-    # Inject AI analysis into the Candidate model
-    # (Assuming you add these fields to your Candidate schema, or store them in a dict)
     candidate.status = "evaluated"
+    evaluated_uids.add(candidate.uid)
 
-    # You can attach the evaluation dict directly to the candidate for storage
     candidate_dict = candidate.model_dump()
-    candidate_dict["evaluation"] = evaluation.model_dump()
+    evaluation_dict = evaluation.model_dump()
+
+    ordered_dict = {}
+    for k, v in candidate_dict.items():
+      if k == "ref":
+        ordered_dict["evaluation"] = evaluation_dict
+      ordered_dict[k] = v
+
+    if "evaluation" not in ordered_dict:
+      ordered_dict["evaluation"] = evaluation_dict
+
+    candidate_dict = ordered_dict
 
     if evaluation.hard_fail:
       hard_failed += 1
-    elif evaluation.score < settings.score_threshold:
+    elif evaluation.score < settings.evaluating.score_threshold:
       low_score += 1
     else:
       passed += 1
 
-    final_candidates.append(candidate_dict)
+    evaluated_data.append(candidate_dict)
 
-  if final_candidates:
-    write(DATA_PATH / "evaluated.json", final_candidates)
-    # Optional: delete candidates.json if you want to clear the queue
-    # delete(DATA_PATH / "candidates.json")
+  if evaluated_data:
+    write(DATA_PATH / "evaluated.json", evaluated_data)
+    logger.info("Successfully appended to evaluated.json.")
+
+  remaining_candidates = [c.model_dump() for c in all_candidates if c.uid not in evaluated_uids]
+  write(DATA_PATH / "candidates.json", remaining_candidates)
 
   return passed, hard_failed, low_score, errors
 
 
-def print_summary(total: int, passed: int, hard_failed: int, low_score: int, errors: int):
-  """Prints the final evaluation summary to the terminal."""
+def main():
+  """Orchestrates the AI evaluation pipeline."""
+  logger.info("Starting AI Evaluation Pipeline...")
+
+  client = setup_llm_client()
+  all_candidates = load_all_candidates()
+
+  pending_candidates = [c for c in all_candidates if c.status == "pending"]
+
+  if not pending_candidates:
+    console.print("[yellow]No pending candidates to evaluate.[/yellow]")
+    return
+
+  system_prompt = build_system_prompt()
+
+  results = execute_evaluation_pipeline(client, pending_candidates, system_prompt)
+
+  passed, hard_failed, low_score, errors = process_and_save_results(results, all_candidates)
+
+  total_successful = passed + hard_failed + low_score
+  logger.info(f"Evaluation pipeline completed. Successful: {total_successful} | Passed: {passed} | Hard Failed: {hard_failed} | Low Score: {low_score} | Errors: {errors}")
+
   console.print("\n[bold]AI Evaluation Summary[/bold]")
   console.print("──────────────────────────────")
-  console.print(f"Total evaluated : [cyan]{total}[/cyan]")
+  console.print(f"Total evaluated : [cyan]{total_successful}[/cyan]")
   console.print(f"Passed          : [bold green]{passed}[/bold green]")
   console.print(f"Failed (Gates)  : [red]{hard_failed}[/red]")
   console.print(f"Failed (Score)  : [yellow]{low_score}[/yellow]")
   if errors:
     console.print(f"API Errors      : [bold red]{errors}[/bold red]")
   console.print("──────────────────────────────\n")
-
-
-def main():
-  """Orchestrates the AI evaluation pipeline."""
-  logger.info("=== Starting AI Evaluation Pipeline ===")
-
-  # 1. Setup
-  client = setup_llm_client()
-  candidates = load_pending_candidates()
-
-  if not candidates:
-    console.print("[yellow]No pending candidates to evaluate.[/yellow]")
-    return
-
-  # Build this ONCE, not inside the loop, to maximize local LLM caching
-  system_prompt = build_system_prompt()
-
-  # 2. Execute
-  results = execute_evaluation_pipeline(client, candidates, system_prompt)
-
-  # 3. Finalize & Save
-  passed, hard_failed, low_score, errors = process_and_save_results(results)
-
-  # 4. Report
-  print_summary(len(candidates), passed, hard_failed, low_score, errors)
-  logger.info("=== AI Evaluation Pipeline Finished ===")
-
-
-if __name__ == "__main__":
-  main()

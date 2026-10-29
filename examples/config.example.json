@@ -1,0 +1,92 @@
+{
+  "_help": "You can keep this key for documentation, the app will ignore it.",
+  "profile": {
+    "target_roles": "Backend Engineer, Python Developer, Software Engineer"
+  },
+  "boards": {
+    "remotive": {
+      "enabled": true,
+      "category": "software-dev"
+    },
+    "remoteok": true
+  },
+  "companies": {
+    "greenhouse": ["stripe", "discord"],
+    "lever": ["netflix"]
+  },
+  "filters": {
+    "title_include": ["backend", "python", "engineer"],
+    "title_exclude": ["frontend", "react", "manager", "staff"],
+    "stack_keywords": [
+      "python",
+      "fastapi",
+      "django",
+      "postgresql",
+      "docker",
+      "aws"
+    ],
+    "min_stack_hits": 2,
+    "company_exclude": ["Crossover", "Turing"],
+    "company_priority": ["OpenAI", "Anthropic"],
+    "require_remote": true,
+    "remote_keywords": [
+      "remote",
+      "wfh",
+      "work from home",
+      "anywhere",
+      "telecommute",
+      "fully remote",
+      "100% remote"
+    ],
+    "location_exclude_terms": [
+      "us only",
+      "us-only",
+      "united states only",
+      "canada only",
+      "uk only",
+      "must reside in"
+    ],
+    "location_allow_terms": ["worldwide", "emea", "anywhere", "global"],
+    "location_require_terms": [],
+    "max_age_days": 14
+  },
+  "limits": {
+    "max_candidates_per_run": 30,
+    "description_max_chars": 7000,
+    "seen_retention_days": 90,
+    "fetch_workers": 8
+  },
+  "evaluating": {
+    "score_threshold": 65,
+    "scoring_weights": [
+      {
+        "name": "tech_stack_match",
+        "weight": 40,
+        "what": "How well the job's tech stack matches the candidate's CV."
+      },
+      {
+        "name": "experience_level",
+        "weight": 30,
+        "what": "Does the required experience match the candidate's years of experience?"
+      },
+      {
+        "name": "role_alignment",
+        "weight": 30,
+        "what": "Is this a backend-focused engineering role?"
+      }
+    ]
+  },
+  "llm": {
+    "provider": "openai",
+    "base_url": "https://api.openai.com/v1",
+    "model": "gpt-4o-mini",
+    "request_delay": 5,
+    "max_workers": 1,
+    "temperature": 0.0,
+    "timeout": 600
+  },
+  "telegram": {
+    "link_preview": false,
+    "notify_on_empty": true
+  }
+}

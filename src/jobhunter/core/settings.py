@@ -1,6 +1,7 @@
 from typing import Any
 
 from pydantic import BaseModel, Field
+from pydantic.aliases import AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .paths import CONFIG_PATH, get_project_root, read
@@ -20,7 +21,7 @@ class FiltersConfig(BaseModel):
   require_remote: bool = True
   remote_keywords: list[str] = ["remote", "wfh", "work from home", "anywhere", "telecommute", "fully remote", "100% remote"]
   location_exclude_terms: list[str] = ["us only", "us-only", "united states only", "canada only", "uk only", "must reside in"]
-  location_allow_terms: list[str] = []
+  location_allow_terms: list[str] = ["worldwide", "emea", "anywhere", "global"]
   location_require_terms: list[str] = []
   max_age_days: int = 14
 
@@ -47,8 +48,8 @@ class LLMConfig(BaseModel):
   provider: str = "openai"
   base_url: str | None = None
   model: str | None = None
-  api_key_env: str = "LLM_API_KEY"
   request_delay: int = 5
+  max_workers: int = 1
   temperature: float = 0.0
   timeout: int = 600
 
@@ -59,20 +60,16 @@ class TelegramConfig(BaseModel):
 
 
 class Settings(BaseSettings):
-  telegram_bot_token: str = ""
-  telegram_chat_id: str = ""
-  llm_api_key: str = ""
+  telegram_bot_token: str = Field(default="", validation_alias=AliasChoices("TELEGRAM_BOT_TOKEN", "telegram_bot_token"))
+  telegram_chat_id: str = Field(default="", validation_alias=AliasChoices("TELEGRAM_CHAT_ID", "telegram_chat_id"))
+  llm_api_key: str = Field(default="", validation_alias=AliasChoices("LLM_API_KEY", "llm_api_key"))
 
   profile: ProfileConfig = Field(default_factory=ProfileConfig)
-
   boards: dict[str, Any] = Field(default_factory=dict)
   companies: dict[str, list[str]] = Field(default_factory=dict)
-
   filters: FiltersConfig = Field(default_factory=FiltersConfig)
   limits: LimitsConfig = Field(default_factory=LimitsConfig)
-
   evaluating: EvaluatingConfig = Field(default_factory=EvaluatingConfig)
-
   llm: LLMConfig = Field(default_factory=LLMConfig)
   telegram: TelegramConfig = Field(default_factory=TelegramConfig)
 

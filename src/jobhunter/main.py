@@ -1,8 +1,9 @@
 import sys
+from typing import Annotated
 
 import typer
 
-from jobhunter.core.logger import setup_logging
+from jobhunter.core.logger import console, setup_logging
 from jobhunter.pipeline import evaluate, fetch, send
 from jobhunter.tools import discover, prompt, prune
 
@@ -12,21 +13,33 @@ app = typer.Typer(
   context_settings={"help_option_names": ["-h", "--help"]},
 )
 
-SourceOpt = typer.Option(None, "--source", "-s", help="Specific source to fetch from")
-NoAggOpt = typer.Option(False, "--no-aggregators", help="Skip aggregator boards")
-IgnoreSeenOpt = typer.Option(False, "--ignore-seen", help="Ignore seen jobs and fetch all")
-LimitOpt = typer.Option(None, "--limit", "-l", help="Overrides max_candidates limit in config.json")
+# 1. Use Annotated for reusable CLI parameters
+SourceOpt = Annotated[str | None, typer.Option("--source", "-s", help="Specific source to fetch from")]
+NoAggOpt = Annotated[bool, typer.Option("--no-aggregators", help="Skip aggregator boards")]
+IgnoreSeenOpt = Annotated[bool, typer.Option("--ignore-seen", help="Ignore seen jobs and fetch all")]
+LimitOpt = Annotated[int | None, typer.Option("--limit", "-l", help="Overrides max_candidates limit in config.json")]
+WriteOpt = Annotated[bool, typer.Option("--write", "-w", help="Write changes to config.json")]
 
 
 @app.command("run", help="Run the full pipeline (fetch -> evaluate -> send)")
-def run_all(source: str | None = SourceOpt, no_aggregators: bool = NoAggOpt, ignore_seen: bool = IgnoreSeenOpt):
-  fetch.main(source_name=source, no_aggregators=no_aggregators, ignore_seen=ignore_seen)
+def run_all(
+  source: SourceOpt = None,
+  no_aggregators: NoAggOpt = False,
+  ignore_seen: IgnoreSeenOpt = False,
+  limit: LimitOpt = None,
+):
+  fetch.main(source_name=source, no_aggregators=no_aggregators, ignore_seen=ignore_seen, limit=limit)
   evaluate.main()
   send.main()
 
 
 @app.command("fetch", help="Fetch jobs from configured boards")
-def fetch_jobs(source: str | None = SourceOpt, no_aggregators: bool = NoAggOpt, ignore_seen: bool = IgnoreSeenOpt, limit: int | None = LimitOpt):
+def fetch_jobs(
+  source: SourceOpt = None,
+  no_aggregators: NoAggOpt = False,
+  ignore_seen: IgnoreSeenOpt = False,
+  limit: LimitOpt = None,
+):
   fetch.main(source_name=source, no_aggregators=no_aggregators, ignore_seen=ignore_seen, limit=limit)
 
 
@@ -42,15 +55,15 @@ def send_jobs():
 
 @app.command("discover", help="Discover and validate new company boards")
 def discover_boards(
-  write: bool = typer.Option(False, "--write", "-w", help="Write discovered slugs to config.json"),
-  source=SourceOpt,
-  titles: str | None = typer.Option(None, "--titles", "-t", help="Comma-separated list of titles to search for"),
+  write: WriteOpt = False,
+  source: SourceOpt = None,
+  titles: Annotated[str | None, typer.Option("--titles", "-t", help="Comma-separated list of titles to search for")] = None,
 ):
   discover.main(write_flag=write, source_name=source, titles_override=titles)
 
 
 @app.command("prune", help="Prune broken company entries from config.json")
-def prune_companies(write: bool = typer.Option(False, "--write", "-w", help="Write pruned config to config.json"), source=SourceOpt):
+def prune_companies(write: WriteOpt = False, source: SourceOpt = None):
   prune.main(write_flag=write, source_name=source)
 
 
@@ -66,8 +79,8 @@ def main():
   try:
     app()
   except KeyboardInterrupt:
-    typer.secho("\nAborted by user.", fg=typer.colors.YELLOW)
+    console.print("\n[yellow]Aborted by user.[/yellow]")
     sys.exit(1)
   except Exception as e:
-    typer.secho(f"\nFatal error: {e}", fg=typer.colors.RED, err=True)
+    console.print(f"\n[bold red]Error: {e}[/bold red]")
     sys.exit(1)
