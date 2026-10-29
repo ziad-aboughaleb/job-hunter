@@ -82,8 +82,6 @@ class Settings(BaseSettings):
 def load_settings() -> Settings:
   """Loads settings from JSON and Markdown files, returning a Settings object."""
   config_dir = get_project_root() / "config"
-
-  # Load JSON
   config_data = read(CONFIG_PATH / "config.json", dict)
 
   # Remove "_help"
