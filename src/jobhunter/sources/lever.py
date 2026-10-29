@@ -2,8 +2,6 @@ import logging
 import re
 from datetime import UTC, datetime
 
-import httpx
-
 from jobhunter.core.http import fetch_url
 from jobhunter.core.textutil import clean_html, parse_date
 from jobhunter.models import Job
@@ -23,22 +21,12 @@ class Source(BaseSource):
       raise ValueError(f"A company slug must be provided to fetch {self.name} jobs.")
 
     url = f"https://api.lever.co/v0/postings/{slug}?mode=json"
-
-    try:
-      data = fetch_url(url, expected_type=list)
-    except httpx.HTTPStatusError:
-      raise
-    except (httpx.HTTPError, ValueError) as e:
-      raise RuntimeError(f"Failed to fetch {self.name} jobs for {slug}: {e}") from e
-
-    if not isinstance(data, list):
-      return []
-
-    jobs = []
+    data = fetch_url(url, expected_type=list)
+    jobs: list[Job] = []
 
     for item in data:
       if not isinstance(item, dict):
-        logger.warning(f"Skipping unexpected item format from {self.name}: {type(item)}")
+        logger.warning(f"[{self.name}] Skipping unexpected item format: {type(item).__name__}")
         continue
 
       job_id = str(item.get("id") or "")
@@ -46,7 +34,7 @@ class Source(BaseSource):
       job_url = str(item.get("hostedUrl") or "")
 
       if not all([job_id, title, job_url]):
-        logger.warning(f"Skipping {self.name} item with missing required fields: {item}")
+        logger.warning(f"[{self.name}] Skipping item with missing required fields: {item}")
         continue
 
       try:
@@ -63,7 +51,7 @@ class Source(BaseSource):
         is_remote = str(item.get("workplaceType", "")).lower() == "remote"
 
         created_raw = item.get("createdAt")
-        posted = datetime.fromtimestamp(created_raw / 1000, tz=UTC).isoformat() if isinstance(created_raw, int) else parse_date(created_raw)
+        posted = datetime.fromtimestamp(created_raw / 1000, tz=UTC).strftime("%Y-%m-%d") if isinstance(created_raw, (int, float)) else parse_date(str(created_raw) if created_raw else None)
 
         jobs.append(
           Job(
@@ -81,7 +69,7 @@ class Source(BaseSource):
         )
 
       except Exception as e:
-        logger.error(f"Error parsing {self.name} job {job_id}: {e}")
+        logger.error(f"[{self.name}] Error parsing job '{job_id}' for '{slug}': {e}")
         continue
 
     return jobs

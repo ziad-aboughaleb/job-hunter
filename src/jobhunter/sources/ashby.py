@@ -1,8 +1,6 @@
 import logging
 import re
 
-import httpx
-
 from jobhunter.core.http import fetch_url
 from jobhunter.core.textutil import clean_html, parse_date
 from jobhunter.models import Job
@@ -22,22 +20,12 @@ class Source(BaseSource):
       raise ValueError(f"A company slug must be provided to fetch {self.name} jobs.")
 
     url = f"https://api.ashbyhq.com/posting-api/job-board/{slug}"
-
-    try:
-      data = fetch_url(url, expected_type=dict)
-    except httpx.HTTPStatusError:
-      raise
-    except (httpx.HTTPError, ValueError) as e:
-      raise RuntimeError(f"Failed to fetch {self.name} jobs for {slug}: {e}") from e
-
-    if not isinstance(data, dict):
-      return []
-
-    jobs = []
+    data = fetch_url(url, expected_type=dict)
+    jobs: list[Job] = []
 
     for item in data.get("jobs", []):
       if not isinstance(item, dict):
-        logger.warning(f"Skipping unexpected item format from {self.name}: {type(item)}")
+        logger.warning(f"[{self.name}] Skipping unexpected item format: {type(item).__name__}")
         continue
 
       if item.get("isListed") is False:
@@ -48,7 +36,7 @@ class Source(BaseSource):
       job_url = str(item.get("jobUrl") or item.get("applyUrl") or "")
 
       if not all([job_id, title, job_url]):
-        logger.warning(f"Skipping {self.name} item with missing required fields: {item}")
+        logger.warning(f"[{self.name}] Skipping item with missing required fields: {item}")
         continue
 
       try:
@@ -73,7 +61,7 @@ class Source(BaseSource):
         )
 
       except Exception as e:
-        logger.error(f"Error parsing {self.name} job {job_id} for {slug}: {e}")
+        logger.error(f"[{self.name}] Error parsing job '{job_id}' for '{slug}': {e}")
         continue
 
     return jobs

@@ -25,7 +25,7 @@ class Source(BaseSource):
     response = None
     base_url = ""
     headers = {"Accept": "application/xml,text/xml,*/*"}
-    last_status_error = None
+    last_error = None
 
     for domain in ("de", "com"):
       base_url = f"https://{slug}.jobs.personio.{domain}"
@@ -35,25 +35,26 @@ class Source(BaseSource):
         response = fetch_url(url, headers=headers)
         break
       except httpx.HTTPStatusError as e:
-        last_status_error = e
+        last_error = e
         if e.response.status_code == 404:
           continue
         raise
-      except (httpx.HTTPError, ValueError) as e:
-        raise RuntimeError(f"Failed to fetch {self.name} jobs for {slug}: {e}") from e
+      except httpx.RequestError as e:
+        last_error = e
+        continue
 
     if not response:
-      if last_status_error:
-        raise last_status_error
+      if last_error:
+        raise last_error
       return []
 
     try:
       root = ET.fromstring(response.text)
     except ET.ParseError as exc:
-      logger.error(f"Failed to parse XML for {slug} from {self.name}: {exc}")
+      logger.error(f"[{self.name}] Failed to parse XML for '{slug}': {exc}")
       return []
 
-    jobs = []
+    jobs: list[Job] = []
 
     for position in root.iter("position"):
 
@@ -65,7 +66,7 @@ class Source(BaseSource):
       job_url = str(f"{base_url}/job/{job_id}" if job_id else "")
 
       if not all([job_id, title, job_url]):
-        logger.warning(f"Skipping {self.name} item with missing required fields: {position.attrib}")
+        logger.warning(f"[{self.name}] Skipping item with missing required fields: {position.attrib}")
         continue
 
       try:
@@ -108,7 +109,7 @@ class Source(BaseSource):
         )
 
       except Exception as e:
-        logger.error(f"Error parsing {self.name} job {job_id}: {e}")
+        logger.error(f"[{self.name}] Error parsing job '{job_id}' for '{slug}': {e}")
         continue
 
     return jobs

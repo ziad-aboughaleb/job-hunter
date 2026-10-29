@@ -1,7 +1,5 @@
 import logging
 
-import httpx
-
 from jobhunter.core.http import fetch_url
 from jobhunter.core.textutil import clean_html, parse_date
 from jobhunter.models import Job
@@ -16,24 +14,14 @@ class Source(BaseSource):
   is_aggregator = True
 
   def fetch(self, slug: str = "", **kwargs) -> list[Job]:
-    """Fetches remote job listings from RemoteOK API."""
+    """Fetches job listings from a specific company's RemoteOK API."""
     url = "https://remoteok.com/api"
-
-    try:
-      data = fetch_url(url, expected_type=list)
-    except httpx.HTTPStatusError:
-      raise
-    except (httpx.HTTPError, ValueError) as e:
-      raise RuntimeError(f"Failed to fetch {self.name} jobs from {url}: {e}") from e
-
-    if not isinstance(data, list):
-      return []
-
-    jobs = []
+    data = fetch_url(url, expected_type=list)
+    jobs: list[Job] = []
 
     for item in data:
       if not isinstance(item, dict):
-        logger.warning(f"Skipping unexpected item format from {self.name}: {type(item)}")
+        logger.warning(f"[{self.name}] Skipping unexpected item format: {type(item).__name__}")
         continue
 
       if "legal" in item:
@@ -44,11 +32,12 @@ class Source(BaseSource):
       job_url = str(item.get("url") or item.get("apply_url") or "")
 
       if not all([job_id, title, job_url]):
-        logger.warning(f"Skipping {self.name} item with missing required fields: {item}")
+        logger.warning(f"[{self.name}] Skipping item with missing required fields: {item}")
         continue
 
       try:
-        tags = ", ".join(item.get("tags") or [])
+        raw_tags = item.get("tags") or []
+        tags = ", ".join(str(t) for t in raw_tags if t)
         description = item.get("description", "")
 
         if tags:
@@ -70,7 +59,7 @@ class Source(BaseSource):
         )
 
       except Exception as e:
-        logger.error(f"Error parsing {self.name} job {job_id}: {e}")
+        logger.error(f"[{self.name}] Error parsing job '{job_id}': {e}")
         continue
 
     return jobs
