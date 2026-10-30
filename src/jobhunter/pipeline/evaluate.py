@@ -64,7 +64,7 @@ def build_evaluation_tasks(job_uid: str | None = None) -> list[Candidate]:
 
 
 def evaluate_single_job(client: OpenAI, system_prompt: str, candidate: Candidate) -> tuple[Candidate, EvaluationResult | None]:
-  """Calls the LLM to evaluate a single job and parses the result with automatic retry on rate limits."""
+  """Calls the LLM to evaluate a single job and parses the result with automatic retry and JSON cleanup fallbacks."""
   user_prompt = build_user_prompt(candidate)
 
   max_retries = 5
@@ -80,12 +80,24 @@ def evaluate_single_job(client: OpenAI, system_prompt: str, candidate: Candidate
         timeout=settings.llm.timeout,
       )
 
-      raw_json = response.choices[0].message.content
+      raw_json = response.choices[0].message.content or ""
       if not raw_json:
         raise ValueError("LLM returned empty content instead of JSON.")
 
-      eval_result = EvaluationResult.model_validate_json(raw_json)
-      return candidate, eval_result
+      try:
+        eval_result = EvaluationResult.model_validate_json(raw_json)
+        return candidate, eval_result
+
+      except ValidationError:
+        cleaned_json = raw_json.strip()
+        if cleaned_json.startswith("```json"):
+          cleaned_json = cleaned_json[7:]
+        if cleaned_json.endswith("```"):
+          cleaned_json = cleaned_json[:-3]
+        cleaned_json = cleaned_json.strip()
+
+        eval_result = EvaluationResult.model_validate_json(cleaned_json)
+        return candidate, eval_result
 
     except openai.RateLimitError as rle:
       if attempt < max_retries - 1:
