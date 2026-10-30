@@ -14,7 +14,7 @@ class Source(BaseSource):
   domains = ["remotive.com", "remotive.io"]
   is_aggregator = True
 
-  def fetch(self, slug: str = "", **kwargs) -> list[Job]:
+  def fetch(self, slug: str = "", skip_parsing: bool = False, **kwargs) -> list[Job]:
     """Fetches job listings from Remotive API."""
     category = self.board_config.get("category", "software-dev") if isinstance(self.board_config, dict) else "software-dev"
 

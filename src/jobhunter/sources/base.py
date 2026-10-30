@@ -59,7 +59,7 @@ class BaseSource(ABC):
       return SlugStatus.INVALID
 
     try:
-      self.fetch(slug=slug)
+      self.fetch(slug=slug, skip_parsing=True)
       return SlugStatus.VALID
 
     except httpx.HTTPStatusError as e:
@@ -104,5 +104,5 @@ class BaseSource(ABC):
       return []
 
   @abstractmethod
-  def fetch(self, slug: str = "", **kwargs) -> list[Job]:
+  def fetch(self, slug: str = "", skip_parsing: bool = False, **kwargs) -> list[Job]:
     pass

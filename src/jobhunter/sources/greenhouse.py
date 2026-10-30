@@ -15,13 +15,17 @@ class Source(BaseSource):
   domains = ["boards.greenhouse.io", "job-boards.greenhouse.io"]
   url_patterns = [re.compile(r"greenhouse\.io/(?P<slug>[^/]+)")]
 
-  def fetch(self, slug: str = "", **kwargs) -> list[Job]:
+  def fetch(self, slug: str = "", skip_parsing: bool = False, **kwargs) -> list[Job]:
     """Fetches job listings from a specific company's Greenhouse API."""
     if not slug:
       raise ValueError(f"A company slug must be provided to fetch {self.name} jobs.")
 
     url = f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs?content=true"
     data = fetch_url(url, expected_type=dict)
+
+    if skip_parsing:
+      return []
+
     jobs: list[Job] = []
 
     for item in data.get("jobs", []):

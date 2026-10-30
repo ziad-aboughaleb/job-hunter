@@ -15,13 +15,17 @@ class Source(BaseSource):
   domains = ["jobs.ashbyhq.com"]
   url_patterns = [re.compile(r"(?://|www\.)(?P<slug>[^/.]+)\.ashbyhq\.com"), re.compile(r"ashbyhq\.com/(?P<slug>[^/]+)")]
 
-  def fetch(self, slug: str = "", **kwargs) -> list[Job]:
+  def fetch(self, slug: str = "", skip_parsing: bool = False, **kwargs) -> list[Job]:
     """Fetches job listings from a specific company's Ashby API."""
     if not slug:
       raise ValueError(f"A company slug must be provided to fetch {self.name} jobs.")
 
     url = f"https://api.ashbyhq.com/posting-api/job-board/{slug}"
     data = fetch_url(url, expected_type=dict)
+
+    if skip_parsing:
+      return []
+
     jobs: list[Job] = []
 
     for item in data.get("jobs", []):

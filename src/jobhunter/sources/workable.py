@@ -36,13 +36,17 @@ class Source(BaseSource):
 
     return " / ".join(n for n in names if n)
 
-  def fetch(self, slug: str = "", **kwargs) -> list[Job]:
+  def fetch(self, slug: str = "", skip_parsing: bool = False, **kwargs) -> list[Job]:
     """Fetches job listings from a specific company's Workable API."""
     if not slug:
       raise ValueError(f"A company slug must be provided to fetch {self.name} jobs.")
 
     url = f"https://apply.workable.com/api/v1/widget/accounts/{slug}?details=true"
     data = fetch_url(url, expected_type=dict)
+
+    if skip_parsing:
+      return []
+
     jobs: list[Job] = []
 
     for item in data.get("jobs", []):

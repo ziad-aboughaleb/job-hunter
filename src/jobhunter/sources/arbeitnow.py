@@ -16,7 +16,7 @@ class Source(BaseSource):
   domains = ["arbeitnow.com"]
   is_aggregator = True
 
-  def fetch(self, slug: str = "", **kwargs) -> list[Job]:
+  def fetch(self, slug: str = "", skip_parsing: bool = False, **kwargs) -> list[Job]:
     """Fetches all available job listings from the Arbeitnow API via pagination link traversal."""
     url = "https://www.arbeitnow.com/api/job-board-api"
     jobs: list[Job] = []

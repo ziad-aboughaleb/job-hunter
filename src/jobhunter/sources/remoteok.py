@@ -14,7 +14,7 @@ class Source(BaseSource):
   domains = ["remoteok.com"]
   is_aggregator = True
 
-  def fetch(self, slug: str = "", **kwargs) -> list[Job]:
+  def fetch(self, slug: str = "", skip_parsing: bool = False, **kwargs) -> list[Job]:
     """Fetches job listings from a specific company's RemoteOK API."""
     url = "https://remoteok.com/api"
     data = fetch_url(url, expected_type=list)
