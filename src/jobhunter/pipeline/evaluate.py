@@ -71,6 +71,8 @@ def evaluate_single_job(client: OpenAI, system_prompt: str, candidate: Candidate
   base_delay = 1.5
 
   for attempt in range(max_retries):
+    raw_json = ""
+
     try:
       response = client.chat.completions.create(
         model=settings.llm.model or "gpt-4o-mini",
@@ -129,6 +131,7 @@ def evaluate_single_job(client: OpenAI, system_prompt: str, candidate: Candidate
     except ValidationError as ve:
       logger.error(f"AI returned invalid schema for {candidate.company}: {ve}")
       console.print(f"  [red]✖ AI returned invalid schema for {candidate.company}[/red]")
+      logger.debug(f"Offending raw JSON for {candidate.company}:\n{raw_json}")
       return candidate, None
 
     except Exception as e:
