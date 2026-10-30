@@ -27,6 +27,7 @@ def build_prune_tasks(raw_config: dict, source_name: str | None) -> dict[str, li
     source = SOURCES.get(name)
     if not source:
       logger.warning(f"Source '{name}' not found in SOURCES. Skipping.")
+      console.print(f"[yellow]Notice: Source '{name}' not found in SOURCES. Skipping.[/yellow]")
       continue
 
     if getattr(source, "is_aggregator", False):

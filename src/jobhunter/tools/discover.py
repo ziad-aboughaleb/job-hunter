@@ -111,6 +111,7 @@ def build_discovery_tasks(source_name: str | None) -> dict[str, Any]:
   if source_name:
     if source_name not in SOURCES:
       logger.error(f"Source '{source_name}' is not configured.")
+      console.print(f"[bold red]Error: Source '{source_name}' is not configured.[/bold red]")
       return {}
 
     source = SOURCES[source_name]
@@ -127,6 +128,7 @@ def build_discovery_tasks(source_name: str | None) -> dict[str, Any]:
         active_sources[name] = source
 
   logger.info(f"Built {len(active_sources)} discovery tasks.")
+
   return active_sources
 
 

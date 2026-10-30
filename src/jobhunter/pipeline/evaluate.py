@@ -31,7 +31,7 @@ def setup_llm_client() -> OpenAI:
   )
 
 
-def build_evaluation_tasks() -> list[Candidate]:
+def build_evaluation_tasks(job_uid: str | None = None) -> list[Candidate]:
   """Loads candidates from disk and filters for those pending evaluation."""
   logger.info("Building evaluation tasks...")
 
@@ -44,10 +44,18 @@ def build_evaluation_tasks() -> list[Candidate]:
   for item in raw_candidates:
     try:
       c = Candidate(**item)
+
+      if job_uid:
+        if c.uid == job_uid:
+          tasks.append(c)
+          break
+        continue
+
       if c.uid not in evaluated_uids:
         tasks.append(c)
     except Exception as e:
       logger.error(f"Failed to parse candidate {item.get('uid', 'unknown')}: {e}")
+      console.print(f"  [red]✖ Failed to parse candidate {item.get('uid', 'unknown')}[/red]")
 
   logger.info(f"Generated {len(tasks)} evaluation tasks from {len(raw_candidates)} total candidates.")
 
@@ -145,10 +153,12 @@ def execute_evaluation_tasks(client: OpenAI, tasks: list[Candidate]) -> list[tup
 
           except concurrent.futures.TimeoutError:
             logger.error(f"Task for {name} timed out.")
+            console.print(f"  [red]✖ Evaluation for {name} timed out.[/red]")
             progress.update(eval_task, advance=1)
 
           except Exception as e:
             logger.exception(f"Error executing evaluation task for {name}: {e}")
+            console.print(f"  [red]✖ Error evaluating {name}: {e}[/red]")
             progress.update(eval_task, advance=1)
 
           submit_next()
@@ -163,13 +173,13 @@ def execute_evaluation_tasks(client: OpenAI, tasks: list[Candidate]) -> list[tup
   return fetched_evals
 
 
-def format_evaluation_results(fetched_evals: list[tuple[Candidate, EvaluationResult | None]]) -> tuple[list[dict], int, int, int, int]:
-  """Formats the AI results into final dictionaries and calculates metrics."""
+def format_evaluation_results(fetched_evals: list[tuple[Candidate, EvaluationResult | None]]) -> tuple[list[EvaluatedCandidate], int, int, int, int]:
+  """Formats the AI results into EvaluatedCandidate models and calculates metrics."""
   logger.info("Formatting LLM results and calculating statistics...")
   console.print("[dim cyan]Formatting evaluations...[/dim cyan]")
 
   passed = hard_failed = low_score = errors = 0
-  final_evaluations = []
+  final_evaluations: list[EvaluatedCandidate] = []
 
   for candidate, evaluation in fetched_evals:
     if not evaluation:
@@ -189,37 +199,43 @@ def format_evaluation_results(fetched_evals: list[tuple[Candidate, EvaluationRes
     else:
       passed += 1
 
-    final_evaluations.append(evaluated_candidate.model_dump(mode="json"))
+    final_evaluations.append(evaluated_candidate)
 
   logger.info(f"Formatting complete. {passed} passed, {hard_failed} hard failed, {low_score} low score, {errors} errors.")
 
   return final_evaluations, passed, hard_failed, low_score, errors
 
 
-def save_evaluation_results(final_evaluations: list[dict]):
-  """Saves evaluated candidates to disk and sorts by score."""
+def save_evaluation_results(final_evaluations: list[EvaluatedCandidate]):
+  """Saves evaluated candidates to disk, preventing duplicate UIDs, and sorts by score."""
   logger.info("Saving evaluations...")
   console.print("[dim cyan]Saving evaluations...[/dim cyan]")
 
   existing_evals = read(DATA_PATH / "evaluated.json", list)
-  existing_evals.extend(final_evaluations)
 
-  existing_evals.sort(key=lambda x: x.get("evaluation", {}).get("score", -1), reverse=True)
+  new_uids = {c.uid for c in final_evaluations}
+  filtered_evals = [e for e in existing_evals if e.get("uid") not in new_uids]
 
-  write(DATA_PATH / "evaluated.json", existing_evals)
+  new_eval_dicts = [c.model_dump(mode="json") for c in final_evaluations]
+
+  filtered_evals.extend(new_eval_dicts)
+  filtered_evals.sort(key=lambda x: x.get("evaluation", {}).get("score", -1), reverse=True)
+
+  write(DATA_PATH / "evaluated.json", filtered_evals)
 
   logger.info(f"Successfully saved {len(final_evaluations)} evaluations to disk.")
 
 
-def main():
+def main(job_uid: str | None = None):
   """Orchestrates the AI evaluation pipeline."""
   logger.info("Starting AI Evaluation Pipeline run.")
 
   client = setup_llm_client()
 
-  tasks = build_evaluation_tasks()
+  tasks = build_evaluation_tasks(job_uid)
   if not tasks:
     logger.warning("No active candidates found to evaluate.")
+    console.print("[yellow]No active candidates found to evaluate.[/yellow]")
     return
 
   fetched_evals = execute_evaluation_tasks(client, tasks)

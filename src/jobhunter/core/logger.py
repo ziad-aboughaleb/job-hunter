@@ -22,7 +22,7 @@ def setup_logging(level: str = "INFO", log_file: str = "logs/jobhunter.log") -> 
     markup=True,
   )
   # hide normal logger.info() from the terminal and only show errors!
-  console_handler.setLevel(logging.WARNING)
+  console_handler.setLevel(logging.CRITICAL)
 
   # 2. Standard File Handler (For debugging history)
   file_handler = logging.FileHandler(log_path, encoding="utf-8")

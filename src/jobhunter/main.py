@@ -20,6 +20,8 @@ NoAggOpt = Annotated[bool, typer.Option("--no-aggregators", help="Skip aggregato
 IgnoreSeenOpt = Annotated[bool, typer.Option("--ignore-seen", help="Ignore seen jobs and fetch all")]
 LimitOpt = Annotated[int | None, typer.Option("--limit", "-l", help="Overrides max_candidates limit in config.json")]
 WriteOpt = Annotated[bool, typer.Option("--write", "-w", help="Write changes to config.json")]
+JobUidOpt = Annotated[str | None, typer.Option("--job", "-j", help="Evaluate a specific candidate by their UID")]
+DryRunOpt = Annotated[bool, typer.Option("--dry-run", help="Send Telegram alerts without updating local state files")]
 
 
 @app.command("run", help="Run the full pipeline (fetch -> evaluate -> send)")
@@ -28,10 +30,11 @@ def run_all(
   no_aggregators: NoAggOpt = False,
   ignore_seen: IgnoreSeenOpt = False,
   limit: LimitOpt = None,
+  dry_run: DryRunOpt = False,
 ):
   fetch.main(source_name=source, no_aggregators=no_aggregators, ignore_seen=ignore_seen, limit=limit)
   evaluate.main()
-  send.main()
+  send.main(dry_run=dry_run)
 
 
 @app.command("fetch", help="Fetch jobs from configured boards")
@@ -45,13 +48,13 @@ def fetch_jobs(
 
 
 @app.command("evaluate", help="Score and evaluate candidates")
-def evaluate_jobs():
-  evaluate.main()
+def evaluate_jobs(job: JobUidOpt = None):
+  evaluate.main(job_uid=job)
 
 
 @app.command("send", help="Send passing jobs to Telegram")
-def send_jobs():
-  send.main()
+def send_jobs(dry_run: DryRunOpt = False):
+  send.main(dry_run=dry_run)
 
 
 @app.command("discover", help="Discover and validate new company boards")

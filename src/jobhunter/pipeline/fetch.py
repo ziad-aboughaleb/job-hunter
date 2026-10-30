@@ -88,10 +88,12 @@ def execute_fetch_tasks(tasks: list[tuple]) -> list[Job]:
 
           except concurrent.futures.TimeoutError:
             logger.error(f"Task for {name} timed out.")
+            console.print(f"  [red]✖ Task for {name} timed out.[/red]")
             progress.update(fetch_task, advance=1)
 
           except Exception as e:
             logger.exception(f"Error executing fetch task for {name}: {e}")
+            console.print(f"  [red]✖ Error fetching {name}: {e}[/red]")
             progress.update(fetch_task, advance=1)
 
           submit_next()
@@ -154,7 +156,7 @@ def score_fetch_results(jobs: list[Job]) -> list[Candidate]:
 
   priority_companies = {c.lower() for c in settings.filters.company_priority}
 
-  scored_candidates = []
+  scored_candidates: list[Candidate] = []
   for job in jobs:
     is_priority = (job.company or "").lower() in priority_companies
     hits = count_stack_hits(job)
@@ -192,18 +194,21 @@ def limit_fetch_results(scored_candidates: list[Candidate], limit: int | None = 
 
 
 def save_fetch_results(final_candidates: list[Candidate]):
-  """Saves finalized candidates into disc."""
+  """Saves finalized candidates into disk, preventing duplicate UIDs."""
   logger.info("Saving candidates...")
   console.print("[dim cyan]Saving candidates...[/dim cyan]")
 
   existing_candidates = read(DATA_PATH / "candidates.json", list)
 
+  new_uids = {c.uid for c in final_candidates}
+  filtered_existing = [c for c in existing_candidates if c.get("uid") not in new_uids]
+
   new_candidate_dicts = [c.model_dump(mode="json") for c in final_candidates]
-  existing_candidates.extend(new_candidate_dicts)
 
-  existing_candidates.sort(key=lambda x: (x.get("priority", False), x.get("stack_hits", 0)), reverse=True)
+  filtered_existing.extend(new_candidate_dicts)
+  filtered_existing.sort(key=lambda x: (x.get("priority", False), x.get("stack_hits", 0)), reverse=True)
 
-  write(DATA_PATH / "candidates.json", existing_candidates)
+  write(DATA_PATH / "candidates.json", filtered_existing)
 
   logger.info(f"Successfully saved {len(final_candidates)} candidates to disk.")
 
@@ -215,6 +220,7 @@ def main(source_name: str | None = None, no_aggregators: bool = False, ignore_se
   tasks = build_fetch_tasks(source_name, no_aggregators)
   if not tasks:
     logger.warning("No active sources/companies found to scrape.")
+    console.print("[yellow]No active sources/companies found to scrape.[/yellow]")
     return
 
   fetched_jobs = execute_fetch_tasks(tasks)

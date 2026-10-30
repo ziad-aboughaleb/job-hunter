@@ -1,5 +1,6 @@
 import json
 
+from jobhunter.core.logger import console
 from jobhunter.core.settings import settings
 from jobhunter.models import Candidate, EvaluationResult
 
@@ -90,7 +91,6 @@ Description:
 
 def main():
   """Prints the compiled system prompt to the console for testing and debugging."""
-  from jobhunter.core.logger import console
 
   console.print("[bold cyan]Generating System Prompt...[/bold cyan]\n")
 
