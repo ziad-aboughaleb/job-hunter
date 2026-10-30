@@ -81,7 +81,8 @@ def send_single_telegram_message(candidate: EvaluatedCandidate) -> bool:
     response.raise_for_status()
     return True
   except Exception as e:
-    logger.error(f"Failed to send Telegram notification for {candidate.company}: {e}")
+    logger.exception(f"Failed to send Telegram notification for {candidate.company}: {e}")
+    console.print(f"  [red]✖ Failed to send Telegram notification for {candidate.company}[/red]")
     return False
 
 

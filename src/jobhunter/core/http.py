@@ -1,8 +1,13 @@
 import atexit
+import logging
 import time
 from typing import Any
 
 import httpx
+
+from jobhunter.core.logger import console
+
+logger = logging.getLogger(__name__)
 
 RETRYABLE_STATUS = {408, 429}
 CLIENT = httpx.Client(headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
@@ -39,7 +44,12 @@ def fetch_url(url: str, headers: dict | None = None, timeout: float = 15.0, retr
       return response
 
     except httpx.HTTPError as e:
+      is_client_not_found = isinstance(e, httpx.HTTPStatusError) and e.response.status_code in {404, 410}
+
       if attempt == retries - 1 or not _should_retry(e):
+        if not is_client_not_found:
+          logger.error(f"HTTP request failed permanently for {url}: {e}")
+          console.print(f"  [red]✖ Network error fetching {url}: {e}[/red]")
         raise
 
       time.sleep(backoff * (2**attempt))

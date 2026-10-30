@@ -27,7 +27,7 @@ def build_prune_tasks(raw_config: dict, source_name: str | None) -> dict[str, li
     source = SOURCES.get(name)
     if not source:
       logger.warning(f"Source '{name}' not found in SOURCES. Skipping.")
-      console.print(f"[yellow]Notice: Source '{name}' not found in SOURCES. Skipping.[/yellow]")
+      console.print(f"  [yellow]⚠ Notice: Source '{name}' not found in SOURCES. Skipping.[/yellow]")
       continue
 
     if getattr(source, "is_aggregator", False):
@@ -61,7 +61,7 @@ def validate_source_slugs(source: Any, slugs: list[str]) -> tuple[list[str], int
     else:
       valid_slugs.append(slug)
       logger.warning(f"Could not definitively verify slug '{slug}' for {source.name}. Keeping it.")
-      console.print(f"  [dim yellow]? Couldn't verify: {slug} (Keeping to be safe)[/dim yellow]")
+      console.print(f"  [yellow]⚠ Couldn't verify: {slug} (Keeping to be safe)[/yellow]")
 
   return valid_slugs, removed_count
 

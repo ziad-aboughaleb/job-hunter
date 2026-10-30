@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 import httpx
 
 from jobhunter.core.http import fetch_url
+from jobhunter.core.logger import console
 from jobhunter.core.textutil import clean_html, parse_date
 from jobhunter.models import Job
 from jobhunter.sources.base import BaseSource
@@ -51,7 +52,8 @@ class Source(BaseSource):
     try:
       root = ET.fromstring(response.text)
     except ET.ParseError as exc:
-      logger.error(f"[{self.name}] Failed to parse XML for '{slug}': {exc}")
+      logger.error(f"[ {self.name} ] Failed to parse XML for '{slug}': {exc}")
+      console.print(f"  [red]✖ [ {self.name} ] Failed to parse XML for '{slug}'[/red]")
       return []
 
     jobs: list[Job] = []
@@ -66,7 +68,8 @@ class Source(BaseSource):
       job_url = str(f"{base_url}/job/{job_id}" if job_id else "")
 
       if not all([job_id, title, job_url]):
-        logger.warning(f"[{self.name}] Skipping item with missing required fields: {position.attrib}")
+        logger.warning(f"[ {self.name} ] Skipping item with missing required fields: {position.attrib}")
+        console.print(f"  [yellow]⚠ [ {self.name} ] Skipping item with missing required fields.[/yellow]")
         continue
 
       try:
@@ -109,7 +112,8 @@ class Source(BaseSource):
         )
 
       except Exception as e:
-        logger.error(f"[{self.name}] Error parsing job '{job_id}' for '{slug}': {e}")
+        logger.exception(f"[ {self.name} ] Error parsing job '{job_id}' for '{slug}': {e}")
+        console.print(f"  [red]✖ [ {self.name} ] Error parsing job '{job_id}'[/red]")
         continue
 
     return jobs

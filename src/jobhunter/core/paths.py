@@ -1,12 +1,17 @@
 import contextlib
 import hashlib
 import json
+import logging
 import os
 import tempfile
 from pathlib import Path
 from typing import Any
 
 from filelock import FileLock
+
+from jobhunter.core.logger import console
+
+logger = logging.getLogger(__name__)
 
 
 def get_project_root() -> Path:
@@ -98,10 +103,16 @@ def read[T: (dict, list, str)](
     return expected_type()
 
   if expected_type in (dict, list):
-    data = json.loads(text)
+    try:
+      data = json.loads(text)
 
-    if not isinstance(data, expected_type):
-      raise TypeError(f"Type mismatch in {path}: Expected {expected_type.__name__}, got {type(data).__name__}")
+      if not isinstance(data, expected_type):
+        raise TypeError(f"Type mismatch in {path}: Expected {expected_type.__name__}, got {type(data).__name__}")
+
+    except (json.JSONDecodeError, TypeError) as e:
+      logger.warning(f"Error reading or parsing {path}: {e}")
+      console.print(f"  [yellow]⚠ Warning: Could not parse {path.name} (corrupted). Using default empty state.[/yellow]")
+      return expected_type()
 
     return data
 

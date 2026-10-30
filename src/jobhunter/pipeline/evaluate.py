@@ -23,6 +23,7 @@ def setup_llm_client() -> OpenAI:
 
   if not settings.llm_api_key:
     logger.error("LLM API key is missing. Set LLM_API_KEY in your .env file.")
+    console.print("[bold red]Error: LLM API key is missing. Set LLM_API_KEY in your .env file.[/bold red]")
     raise ValueError("LLM_API_KEY is empty. Check your .env file.")
 
   return OpenAI(
@@ -89,9 +90,11 @@ def evaluate_single_job(client: OpenAI, system_prompt: str, candidate: Candidate
     raise
   except ValidationError as ve:
     logger.error(f"AI returned invalid schema for {candidate.company}: {ve}")
+    console.print(f"  [red]✖ AI returned invalid schema for {candidate.company}[/red]")
     return candidate, None
   except Exception as e:
     logger.error(f"LLM API error evaluating {candidate.company}: {e}")
+    console.print(f"  [red]✖ LLM API error evaluating {candidate.company}: {e}[/red]")
     return candidate, None
 
 

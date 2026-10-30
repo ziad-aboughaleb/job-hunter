@@ -7,6 +7,7 @@ from urllib.parse import unquote
 
 import httpx
 
+from jobhunter.core.logger import console
 from jobhunter.core.settings import settings
 from jobhunter.models import Job
 
@@ -76,6 +77,7 @@ class BaseSource(ABC):
 
     if not self.is_aggregator and not slug:
       logger.warning(f"[ {self.name} ] Skipping execution: Non-aggregator sources require a slug.")
+      console.print(f"  [yellow]⚠ [ {self.name} ] Skipping execution: Non-aggregator sources require a slug.[/yellow]")
       return []
 
     try:
@@ -83,18 +85,22 @@ class BaseSource(ABC):
 
     except httpx.HTTPStatusError as e:
       logger.error(f"[ {self.name} ] HTTP {e.response.status_code} error for slug '{slug}': {e}")
+      console.print(f"  [red]✖ [ {self.name} ] HTTP {e.response.status_code} error for slug '{slug}'[/red]")
       return []
 
     except httpx.RequestError as e:
       logger.error(f"[ {self.name} ] Network error while connecting to '{slug}': {e}")
+      console.print(f"  [red]✖ [ {self.name} ] Network error while connecting to '{slug}'[/red]")
       return []
 
     except ValueError as e:
       logger.error(f"[ {self.name} ] Validation error for slug '{slug}': {e}")
+      console.print(f"  [red]✖ [ {self.name} ] Validation error for slug '{slug}': {e}[/red]")
       return []
 
     except Exception as e:
       logger.exception(f"[ {self.name} ] Unexpected error executing scraper for slug '{slug}': {e}")
+      console.print(f"  [red]✖ [ {self.name} ] Unexpected error executing scraper for slug '{slug}'[/red]")
       return []
 
   @abstractmethod

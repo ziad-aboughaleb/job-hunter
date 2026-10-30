@@ -1,6 +1,7 @@
 import logging
 
 from jobhunter.core.http import fetch_url
+from jobhunter.core.logger import console
 from jobhunter.core.textutil import clean_html, parse_date
 from jobhunter.models import Job
 from jobhunter.sources.base import BaseSource
@@ -21,7 +22,8 @@ class Source(BaseSource):
 
     for item in data:
       if not isinstance(item, dict):
-        logger.warning(f"[{self.name}] Skipping unexpected item format: {type(item).__name__}")
+        logger.warning(f"[ {self.name} ] Skipping unexpected item format: {type(item).__name__}")
+        console.print(f"  [yellow]⚠ [ {self.name} ] Skipping unexpected item format...[/yellow]")
         continue
 
       if "legal" in item:
@@ -32,7 +34,8 @@ class Source(BaseSource):
       job_url = str(item.get("url") or item.get("apply_url") or "")
 
       if not all([job_id, title, job_url]):
-        logger.warning(f"[{self.name}] Skipping item with missing required fields: {item}")
+        logger.warning(f"[ {self.name} ] Skipping item with missing required fields: {item}")
+        console.print(f"  [yellow]⚠ [ {self.name} ] Skipping item with missing required fields.[/yellow]")
         continue
 
       try:
@@ -59,7 +62,8 @@ class Source(BaseSource):
         )
 
       except Exception as e:
-        logger.error(f"[{self.name}] Error parsing job '{job_id}': {e}")
+        logger.exception(f"[ {self.name} ] Error parsing job '{job_id}': {e}")
+        console.print(f"  [red]✖ [ {self.name} ] Error parsing job '{job_id}'[/red]")
         continue
 
     return jobs

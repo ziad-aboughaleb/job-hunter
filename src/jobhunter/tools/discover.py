@@ -93,7 +93,7 @@ def get_target_titles(titles_override: str | None) -> list[str]:
 
   if not titles:
     logger.warning("No target titles found in config.json or override.")
-    console.print("[red]No target titles found in config.json filters.title_include.[/red]")
+    console.print("  [yellow]⚠ No target titles found in config.json filters.title_include.[/yellow]")
     return []
 
   target_titles = titles[:QUERY_LIMIT]
@@ -117,7 +117,7 @@ def build_discovery_tasks(source_name: str | None) -> dict[str, Any]:
     source = SOURCES[source_name]
     if getattr(source, "is_aggregator", False):
       logger.warning(f"Source '{source_name}' is an aggregator, skipping.")
-      console.print(f"[yellow]Notice: '{source_name}' is an aggregator. Discovery is only for ATS company slugs.[/yellow]")
+      console.print(f"  [yellow]⚠ Notice: '{source_name}' is an aggregator. Discovery is only for ATS company slugs.[/yellow]")
       return {}
 
     if getattr(source, "domains", None):
@@ -201,10 +201,11 @@ def execute_discovery_searches(active_sources: dict[str, Any], target_titles: li
         except Exception as e:
           consecutive_errors += 1
           logger.exception(f"Error searching {name}: {e}")
+          console.print(f"  [red]✖ Error searching {name}: {e}[/red]")
 
           if consecutive_errors >= 3:
             logger.warning(f"Circuit breaker triggered for {name}: 3 consecutive failures.")
-            console.print("\n[bold red]Stopping early: 3 consecutive searches failed (likely rate-limited).[/bold red]")
+            console.print("  [yellow]⚠ Stopping early: 3 consecutive searches failed (likely rate-limited).[/yellow]")
             break
 
         time.sleep(BACKOFF)

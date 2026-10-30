@@ -88,4 +88,5 @@ def main():
   except Exception as e:
     logger = logging.getLogger(__name__)
     logger.exception(f"Fatal error: {e}")
+    console.print(f"[bold red]Fatal error: {e}[/bold red]")
     sys.exit(1)
