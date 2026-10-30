@@ -64,6 +64,14 @@ src/jobhunter/
 - Concurrently validates each slug against ATS APIs. Treats 404 and 410 HTTP status codes as definitive dead links (`SlugStatus.INVALID`).
 - If run with `--write`, removes broken slugs from `config/config.json`.
 
+### 6. Source Adapters (`sources/`)
+
+- **Lightweight API-First Design**: `JobHunter` entirely avoids heavy, resource-intensive headless browsers (such as Selenium or Playwright) by querying public, lightweight JSON and XML ATS APIs directly. This ensures lightning-fast execution, minimal memory footprint, and high concurrency.
+- **Aggregators vs. ATS Board Scrapers**:
+  - **Aggregators** (`remotive.py`, `remoteok.py`, `arbeitnow.py`): Pull global remote job feeds without requiring company slugs (`is_aggregator = True`).
+  - **ATS Board Scrapers** (`greenhouse.py`, `lever.py`, `ashby.py`, `personio.py`, `workable.py`, `recruitee.py`): Fetch job openings specifically via company board slugs (e.g., Greenhouse API endpoint `https://boards-api.greenhouse.io/v1/boards/{slug}/jobs`).
+- **Slug Validation & Lifecycle (`validate_slug`)**: Both the `discover` and `prune` tools inherit from `BaseSource` and utilize the `validate_slug(slug)` method. By executing lightweight test queries or checking HTTP status codes (where 404 and 410 represent definitive dead links), `validate_slug` returns a `SlugStatus` enum (`VALID`, `INVALID`, or `UNKNOWN`) to ensure all tracked boards remain active.
+
 ---
 
 ## 🔄 State Management Lifecycle

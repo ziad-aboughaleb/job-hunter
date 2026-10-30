@@ -159,3 +159,108 @@ The `config/config.json` file controls search targets, filtering rules, scoring 
 - **Strict Evidence Rule**: The LLM is prohibited from hallucinating skills, employers, numbers, or years of experience. A strength can _only_ be cited if the job posting explicitly requests it _and_ the CV explicitly demonstrates it.
 - **Seniority & Gap Enforcement**: Minor seniority mismatches (1-2 years) are permissible if core skills match, but major gaps trigger hard failures or score penalties. Missing required skills _must_ be explicitly listed under gaps.
 - **Structured JSON Output**: Enforces exact adherence to the `EvaluationResult` Pydantic model (reasoning, hard fails, strengths, gaps, score, score explanation, and one-sentence professional pitch).
+
+---
+
+## 🔌 Adding a Custom Source / Board
+
+To extend `JobHunter` with a new Applicant Tracking System (ATS) or custom job board, follow this 4-step developer guide:
+
+### Step 1: Create a New Adapter File
+
+Create a new Python module in `src/jobhunter/sources/your_ats.py` inheriting from `BaseSource` (`sources/base.py`):
+
+```python
+import logging
+import re
+
+from jobhunter.core.http import fetch_url
+from jobhunter.core.textutil import clean_html, parse_date
+from jobhunter.models import Job
+from jobhunter.sources.base import BaseSource
+
+logger = logging.getLogger(__name__)
+
+
+class Source(BaseSource):
+  name = "your_ats"
+  domains = ["yourats.com", "api.yourats.com"]
+  url_patterns = [
+    re.compile(r"yourats\.com/(?P<slug>[^/?#]+)"),
+  ]
+  is_aggregator = False
+```
+
+### Step 2: Implement Extraction Logic and Slug Validation
+
+Implement the `fetch(self, slug: str = "", skip_parsing: bool = False, **kwargs)` method. When `skip_parsing` is `True`, make a lightweight test request or check to validate board existence (utilized by `discover` and `prune` tools via `validate_slug`):
+
+```python
+  def fetch(self, slug: str = "", skip_parsing: bool = False, **kwargs) -> list[Job]:
+    """Fetches job listings from your custom ATS board API."""
+    if not slug:
+      raise ValueError(f"A company slug must be provided to fetch {self.name} jobs.")
+
+    url = f"https://api.yourats.com/v1/boards/{slug}/jobs"
+    data = fetch_url(url, expected_type=dict)
+
+    if skip_parsing:
+      return []
+
+    jobs: list[Job] = []
+
+    for item in data.get("jobs", []):
+      job_id = str(item.get("id") or "")
+      title = str(item.get("title") or "")
+      job_url = str(item.get("url") or "")
+
+      if not all([job_id, title, job_url]):
+        continue
+
+      jobs.append(
+        Job(
+          source=self.name,
+          board=slug,
+          company=slug.replace("-", " ").title(),
+          job_id=job_id,
+          title=title,
+          url=job_url,
+          location=str(item.get("location") or "Remote"),
+          remote=True,
+          posted=parse_date(item.get("created_at")),
+          description=clean_html(item.get("description", "")),
+        )
+      )
+
+    return jobs
+```
+
+### Step 3: Register the New Source
+
+`src/jobhunter/sources/__init__.py` dynamically discovers all Python modules in the `sources/` directory. Because your module defines a `Source` class subclassing `BaseSource`, it is automatically imported and registered into the global `SOURCES` dictionary:
+
+```python
+# src/jobhunter/sources/__init__.py snippet:
+for _, module_name, _ in pkgutil.iter_modules([current_dir]):
+  if module_name == "base":
+    continue
+  module = importlib.import_module(f".{module_name}", package=__name__)
+  if hasattr(module, "Source"):
+    source_instance = module.Source()
+    if getattr(source_instance, "enabled", True):
+      SOURCES[source_instance.name] = source_instance
+```
+
+### Step 4: Configure Company Slugs in `config.json`
+
+Add your new source name and company board slugs under the `companies` section in `config/config.json`:
+
+```json
+{
+  "companies": {
+    "greenhouse": ["stripe", "discord"],
+    "lever": ["netflix"],
+    "your_ats": ["acme-corp", "globex"]
+  }
+}
+```
