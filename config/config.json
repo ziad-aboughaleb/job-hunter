@@ -355,12 +355,7 @@
       "uk only",
       "must reside in"
     ],
-    "location_allow_terms": [
-      "worldwide",
-      "emea",
-      "anywhere",
-      "global"
-    ],
+    "location_allow_terms": ["worldwide", "emea", "anywhere", "global"],
     "location_require_terms": [],
     "max_age_days": 14
   },

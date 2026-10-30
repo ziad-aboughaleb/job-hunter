@@ -53,7 +53,7 @@
   "limits": {
     "max_candidates_per_run": 30,
     "description_max_chars": 7000,
-    "seen_retention_days": 90,
+    "seen_retention_days": 90
   },
   "evaluating": {
     "score_threshold": 65,
