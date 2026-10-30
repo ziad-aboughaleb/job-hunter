@@ -1,0 +1,27 @@
+2026-10-30 03:22:37 [INFO] jobhunter.pipeline.fetch: Starting job fetch pipeline run.
+2026-10-30 03:22:37 [INFO] jobhunter.pipeline.fetch: Building fetch tasks...
+2026-10-30 03:22:37 [INFO] jobhunter.pipeline.fetch: Generated 18 fetch tasks.
+2026-10-30 03:22:37 [INFO] jobhunter.pipeline.fetch: Executing fetch tasks across 18 targets with 8 workers.
+2026-10-30 03:22:57 [INFO] jobhunter.pipeline.fetch: Starting job fetch pipeline run.
+2026-10-30 03:22:57 [INFO] jobhunter.pipeline.fetch: Building fetch tasks...
+2026-10-30 03:22:57 [INFO] jobhunter.pipeline.fetch: Generated 163 fetch tasks.
+2026-10-30 03:22:57 [INFO] jobhunter.pipeline.fetch: Executing fetch tasks across 163 targets with 8 workers.
+2026-10-30 03:23:46 [ERROR] jobhunter.sources.base: [lever] Network error while connecting to 'drivetrain': The read operation timed out
+2026-10-30 03:23:48 [ERROR] jobhunter.sources.base: [lever] Network error while connecting to 'kpler': The read operation timed out
+2026-10-30 03:23:58 [ERROR] jobhunter.sources.base: [lever] Network error while connecting to 'jobgether': The read operation timed out
+2026-10-30 03:24:06 [ERROR] jobhunter.sources.base: [lever] Network error while connecting to 'lyrahealth': The read operation timed out
+2026-10-30 03:24:13 [ERROR] jobhunter.sources.base: [lever] Network error while connecting to 'hive': The read operation timed out
+2026-10-30 03:24:15 [ERROR] jobhunter.sources.base: [lever] Network error while connecting to 'firstup': The read operation timed out
+2026-10-30 03:25:09 [ERROR] jobhunter.sources.base: [lever] Network error while connecting to 'palantir': _ssl.c:1064: The handshake operation timed out
+2026-10-30 03:25:43 [INFO] jobhunter.pipeline.fetch: Starting job fetch pipeline run.
+2026-10-30 03:25:43 [INFO] jobhunter.pipeline.fetch: Building fetch tasks...
+2026-10-30 03:25:43 [INFO] jobhunter.pipeline.fetch: Generated 163 fetch tasks.
+2026-10-30 03:25:43 [INFO] jobhunter.pipeline.fetch: Executing fetch tasks across 163 targets with 8 workers.
+2026-10-30 03:26:44 [INFO] jobhunter.pipeline.fetch: Successfully fetched 21380 raw jobs.
+2026-10-30 03:26:44 [INFO] jobhunter.pipeline.fetch: Filtering and deduplicating jobs...
+2026-10-30 03:26:51 [INFO] jobhunter.pipeline.fetch: Filtering complete: 146 passed, 0 skipped (seen), 975 dupes, 20259 failed filters.
+2026-10-30 03:26:51 [INFO] jobhunter.pipeline.fetch: Scoring and sorting passing jobs...
+2026-10-30 03:26:51 [INFO] jobhunter.pipeline.fetch: Enforcing limits and generating final candidates...
+2026-10-30 03:26:51 [INFO] jobhunter.pipeline.fetch: Generated 30 candidates. Cut 116 jobs over the cap.
+2026-10-30 03:26:51 [INFO] jobhunter.pipeline.fetch: Successfully saved 30 candidates to disk.
+2026-10-30 03:26:51 [INFO] jobhunter.pipeline.fetch: Pipeline finished. Raw: 21380 | Seen: 0 | Dupe: 975 | Failed Filters: 20259 | Cut: 116 | Candidates: 30

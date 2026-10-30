@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 from jobhunter.core.settings import settings
 
@@ -14,6 +14,12 @@ class Job(BaseModel):
   remote: bool | None = None
   posted: str = ""
   description: str
+
+  @computed_field
+  @property
+  def uid(self) -> str:
+    """Dynamically generates a unique identifier for the job."""
+    return f"{self.source}:{self.board}:{self.job_id or self.url}"
 
 
 class Candidate(BaseModel):
@@ -35,13 +41,11 @@ class Candidate(BaseModel):
   @classmethod
   def from_job(cls, job: Job, priority: bool, stack_hits: int) -> Candidate:
     """Factory method to convert a raw scraped Job into a stored Candidate."""
-    uid = f"{job.source}:{job.board}:{job.job_id or job.url}"
-
     max_chars = settings.limits.description_max_chars
     truncated_description = (job.description or "No description provided.")[:max_chars]
 
     return cls(
-      uid=uid,
+      uid=job.uid,
       priority=priority,
       stack_hits=stack_hits,
       status="pending",
@@ -69,3 +73,9 @@ class EvaluationResult(BaseModel):
   score: int = Field(description="Final match score (0-100) based on the rubric.")
   score_explanation: str = Field(description="A 1-2 sentence explanation of exactly why the job passed or failed the score threshold.")
   pitch: str = Field(default="", description="A short, one-sentence first-person pitch. Empty if score is below threshold.")
+
+
+class EvaluatedCandidate(Candidate):
+  """A candidate that has been evaluated by the AI."""
+
+  evaluation: EvaluationResult
