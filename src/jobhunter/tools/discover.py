@@ -103,9 +103,9 @@ def get_target_titles(titles_override: str | None) -> list[str]:
   return target_titles
 
 
-def get_active_sources(source_name: str | None) -> dict[str, Any]:
-  """Filters the configured sources for discovery suitability."""
-  logger.info("Filtering valid sources for discovery...")
+def build_discovery_tasks(source_name: str | None) -> dict[str, Any]:
+  """Resolves and builds the list of valid sources for discovery suitability."""
+  logger.info("Building discovery tasks...")
   active_sources = {}
 
   if source_name:
@@ -127,7 +127,7 @@ def get_active_sources(source_name: str | None) -> dict[str, Any]:
       if not getattr(source, "is_aggregator", False) and getattr(source, "domains", None):
         active_sources[name] = source
 
-  logger.info(f"Found {len(active_sources)} valid sources for discovery.")
+  logger.info(f"Built {len(active_sources)} discovery tasks.")
   return active_sources
 
 
@@ -215,9 +215,9 @@ def execute_discovery_searches(active_sources: dict[str, Any], target_titles: li
   return new_slugs
 
 
-def update_and_save_config(new_slugs: dict[str, set[str]], write_flag: bool):
+def save_discovery_results(new_slugs: dict[str, set[str]], write_flag: bool):
   """Merges newly discovered slugs with config.json and writes to disk if requested."""
-  logger.info("Processing discovery results...")
+  logger.info("Saving discovery results...")
 
   if not any(new_slugs.values()):
     logger.info("Discovery run completed. No new slugs found.")
@@ -248,19 +248,16 @@ def main(write_flag: bool = False, source_name: str | None = None, titles_overri
   logger.info("Starting discovery pipeline...")
   console.print("[bold cyan]Discovering new company slugs from configured sources...[/bold cyan]")
 
-  # 1. Setup
   target_titles = get_target_titles(titles_override)
   if not target_titles:
     return
 
-  active_sources = get_active_sources(source_name)
+  active_sources = build_discovery_tasks(source_name)
   if not active_sources:
     return
 
-  # 2. Execute & Validate
   new_slugs = execute_discovery_searches(active_sources, target_titles)
 
-  # 3. Finalize
-  update_and_save_config(new_slugs, write_flag)
+  save_discovery_results(new_slugs, write_flag)
 
   logger.info("Discovery pipeline finished...")

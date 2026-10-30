@@ -9,10 +9,9 @@ from jobhunter.sources.base import SlugStatus
 logger = logging.getLogger(__name__)
 
 
-def get_target_sources(raw_config: dict, source_name: str | None) -> dict[str, list[str]]:
-  """Retrieves the companies to be pruned from the config based on CLI filters."""
-  logger.info("Resolving sources for pruning...")
-  console.print("")
+def build_prune_tasks(raw_config: dict, source_name: str | None) -> dict[str, list[str]]:
+  """Resolves and builds the list of company slugs to be checked from the config."""
+  logger.info("Building prune tasks...")
 
   companies = raw_config.get("companies", {})
 
@@ -28,7 +27,6 @@ def get_target_sources(raw_config: dict, source_name: str | None) -> dict[str, l
     source = SOURCES.get(name)
     if not source:
       logger.warning(f"Source '{name}' not found in SOURCES. Skipping.")
-      console.print(f"[red]Source '{name}' not found. Skipping.[/red]")
       continue
 
     if getattr(source, "is_aggregator", False):
@@ -68,7 +66,7 @@ def validate_source_slugs(source: Any, slugs: list[str]) -> tuple[list[str], int
 
 
 def execute_prune_checks(target_sources: dict[str, list[str]]) -> tuple[dict[str, list[str]], int]:
-  """Iterates through all target sources and validates their slugs."""
+  """Executes the prune validation loop across target sources."""
   logger.info("Executing prune validation loop...")
   new_companies = {}
   total_removed = 0
@@ -83,8 +81,8 @@ def execute_prune_checks(target_sources: dict[str, list[str]]) -> tuple[dict[str
   return new_companies, total_removed
 
 
-def save_pruned_config(raw_config: dict, new_companies: dict, removed_count: int, write_flag: bool):
-  """Merges the pruned company list back into the config and writes to disk if requested."""
+def save_prune_results(raw_config: dict, new_companies: dict, removed_count: int, write_flag: bool):
+  """Merges the pruned company list back into config and persists to disk if requested."""
   for name, slugs in new_companies.items():
     raw_config["companies"][name] = slugs
 
@@ -98,27 +96,25 @@ def save_pruned_config(raw_config: dict, new_companies: dict, removed_count: int
 
 
 def main(write_flag: bool = False, source_name: str | None = None):
-  """Prunes definitively broken or non-existent company slugs from config.json."""
-  logger.info("Starting prune process...")
+  """Orchestrates the company slug pruning pipeline."""
+  logger.info("Starting prune pipeline run.")
   console.print("[bold cyan]Pruning broken company slugs from config.json...[/bold cyan]")
 
-  # 1. Setup
   raw_config = read(CONFIG_PATH / "config.json", dict)
-  target_sources = get_target_sources(raw_config, source_name)
 
-  if not target_sources:
+  tasks = build_prune_tasks(raw_config, source_name)
+  if not tasks:
+    logger.warning("No valid company slugs found to prune.")
     console.print("[yellow]No valid company slugs found to prune.[/yellow]")
     return
 
-  # 2. Validate
-  new_companies, removed_count = execute_prune_checks(target_sources)
+  new_companies, removed_count = execute_prune_checks(tasks)
 
-  # 3. Finalize
   if removed_count == 0:
     logger.info("Prune complete. No broken slugs found.")
     console.print("\n[green]All checked company slugs are valid! No pruning needed.[/green]")
     return
 
-  save_pruned_config(raw_config, new_companies, removed_count, write_flag)
+  save_prune_results(raw_config, new_companies, removed_count, write_flag)
 
-  logger.info("Prune process finished...")
+  logger.info("Prune pipeline finished.")
