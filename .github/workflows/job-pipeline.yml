@@ -1,0 +1,136 @@
+name: Job Pipeline
+
+on:
+  schedule:
+    # Runs every day at 6:00 UTC (8:00 AM Cairo time UTC+2) and every 8 hours after that (14:00, 22:00 UTC)
+    - cron: "0 6,14,22 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run pipeline in dry-run mode (no telegram notifications sent)"
+        type: boolean
+        required: false
+        default: false
+      ignore_seen:
+        description: "Ignore seen history cache and re-process recent jobs"
+        type: boolean
+        required: false
+        default: false
+      no_aggregators:
+        description: "Disable aggregator sources (Remotive, RemoteOK, Arbeitnow)"
+        type: boolean
+        required: false
+        default: true
+      source:
+        description: "Run for a specific source/company only (optional)"
+        type: string
+        required: false
+        default: ""
+      limit:
+        description: "Limit maximum candidates per run (optional)"
+        type: number
+        required: false
+        default: 0
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up UV and Python
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+          cache: "uv"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Check existing state files before run
+        id: check-state
+        run: |
+          if [ -f "data/candidates.json" ]; then
+            echo "candidates_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "candidates_exists=false" >> $GITHUB_OUTPUT
+          fi
+          if [ -f "data/evaluated.json" ]; then
+            echo "evaluated_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "evaluated_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run JobHunter Pipeline
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          CONFIG_JSON: ${{ secrets.CONFIG_JSON }}
+          CV: ${{ secrets.CV }}
+          PREFERENCES: ${{ secrets.PREFERENCES }}
+        run: |
+          CMD="uv run jobhunter run"
+
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            if [ "${{ inputs.no_aggregators }}" == "true" ]; then
+              CMD="$CMD --no-aggregators"
+            fi
+            if [ "${{ inputs.dry_run }}" == "true" ]; then
+              CMD="$CMD --dry-run"
+            fi
+            if [ "${{ inputs.ignore_seen }}" == "true" ]; then
+              CMD="$CMD --ignore-seen"
+            fi
+            if [ -n "${{ inputs.source }}" ]; then
+              CMD="$CMD --source ${{ inputs.source }}"
+            fi
+            if [ -n "${{ inputs.limit }}" ] && [ "${{ inputs.limit }}" -gt 0 ]; then
+              CMD="$CMD --limit ${{ inputs.limit }}"
+            fi
+          else
+            # Default for scheduled runs: aggregators disabled
+            CMD="$CMD --no-aggregators"
+          fi
+
+          echo "Executing: $CMD"
+          eval $CMD
+
+      - name: Commit and push state files
+        env:
+          CANDIDATES_EXISTS: ${{ steps.check-state.outputs.candidates_exists }}
+          EVALUATED_EXISTS: ${{ steps.check-state.outputs.evaluated_exists }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git status
+
+          git add data/seen.json
+
+          # Only push candidates.json if it already existed in the repo prior to the run
+          if [ "$CANDIDATES_EXISTS" == "true" ] && [ -f "data/candidates.json" ]; then
+            git add data/candidates.json
+          fi
+
+          # Only push evaluated.json if it already existed in the repo prior to the run
+          if [ "$EVALUATED_EXISTS" == "true" ] && [ -f "data/evaluated.json" ]; then
+            git add data/evaluated.json
+          fi
+
+          if git diff --staged --quiet; then
+            echo "No state file changes to commit."
+          else
+            git commit -m "chore(pipeline): update jobhunter state files [skip ci]"
+            git push
+          fi

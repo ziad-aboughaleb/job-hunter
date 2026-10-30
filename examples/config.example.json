@@ -1,87 +1,90 @@
 {
-  "_help": "Template used by `python -m jobhunter init`. Only settings you change are needed: every setting has a default. Full reference: docs/CONFIG.md",
-
+  "_help": "You can keep this key for documentation, the app will ignore it.",
   "profile": {
-    "target_roles": "software engineering work that fits the candidate's CV and preferences"
+    "target_roles": "Backend Engineer, Python Developer, Software Engineer"
   },
-
   "boards": {
-    "remotive": { "enabled": true, "category": "software-dev" },
-    "remoteok": true,
-    "arbeitnow": false
+    "remotive": {
+      "enabled": true,
+      "category": "software-dev"
+    },
+    "remoteok": true
   },
-
   "companies": {
-    "greenhouse": [],
-    "lever": [],
-    "lever_eu": [],
-    "ashby": [],
-    "recruitee": [],
-    "workable": [],
-    "personio": []
+    "greenhouse": ["stripe", "discord"],
+    "lever": ["netflix"]
   },
-
   "filters": {
-    "title_include": ["engineer", "developer"],
-    "title_exclude": [
-      "recruiter",
-      "sales",
-      "marketing",
-      "account executive",
-      "customer success",
-      "designer"
+    "title_include": ["backend", "python", "engineer"],
+    "title_exclude": ["frontend", "react", "manager", "staff"],
+    "stack_keywords": [
+      "python",
+      "fastapi",
+      "django",
+      "postgresql",
+      "docker",
+      "aws"
     ],
-    "stack_keywords": [],
-    "min_stack_hits": 0,
-    "company_exclude": [],
-    "company_priority": [],
+    "min_stack_hits": 2,
+    "company_exclude": ["Crossover", "Turing"],
+    "company_priority": ["OpenAI", "Anthropic"],
     "require_remote": true,
-    "location_exclude_terms": [],
-    "location_allow_terms": [],
+    "remote_keywords": [
+      "remote",
+      "wfh",
+      "work from home",
+      "anywhere",
+      "telecommute",
+      "fully remote",
+      "100% remote"
+    ],
+    "location_exclude_terms": [
+      "us only",
+      "us-only",
+      "united states only",
+      "canada only",
+      "uk only",
+      "must reside in"
+    ],
+    "location_allow_terms": ["worldwide", "emea", "anywhere", "global"],
     "location_require_terms": [],
     "max_age_days": 14
   },
-
   "limits": {
     "max_candidates_per_run": 30,
     "description_max_chars": 7000,
-    "max_messages": 15,
-    "seen_retention_days": 90,
-    "fetch_workers": 8
+    "seen_retention_days": 90
   },
-
-  "score_threshold": 75,
-
-  "scoring_weights": [
-    {
-      "name": "Core skills overlap",
-      "weight": 40,
-      "what": "required technologies and skills that the CV demonstrates"
-    },
-    {
-      "name": "Experience and seniority fit",
-      "weight": 20,
-      "what": "years and level compared with the CV"
-    },
-    {
-      "name": "Role type and location fit",
-      "weight": 20,
-      "what": "title fit, and a work arrangement and location that suit the candidate"
-    },
-    {
-      "name": "Nice-to-haves",
-      "weight": 20,
-      "what": "secondary tools, methodologies and soft skills"
-    }
-  ],
-
+  "evaluating": {
+    "score_threshold": 65,
+    "scoring_weights": [
+      {
+        "name": "tech_stack_match",
+        "weight": 40,
+        "what": "How well the job's tech stack matches the candidate's CV."
+      },
+      {
+        "name": "experience_level",
+        "weight": 30,
+        "what": "Does the required experience match the candidate's years of experience?"
+      },
+      {
+        "name": "role_alignment",
+        "weight": 30,
+        "what": "Is this a backend-focused engineering role?"
+      }
+    ]
+  },
   "llm": {
     "provider": "openai",
-    "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
-    "model": "gemini-3.5-flash-lite",
-    "api_key_env": "LLM_API_KEY",
-    "request_delay": 5
+    "base_url": "https://api.openai.com/v1",
+    "model": "gpt-4o-mini",
+    "request_delay": 5,
+    "temperature": 0.0,
+    "timeout": 600
   },
-
-  "telegram": { "link_preview": false, "notify_on_empty": true }
+  "telegram": {
+    "link_preview": false,
+    "notify_on_empty": true
+  }
 }

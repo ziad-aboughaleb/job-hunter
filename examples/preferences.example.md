@@ -1,31 +1,19 @@
-# Job preferences (edit me: the AI reads this file when it judges a job)
+# Job Preferences
 
-## Target roles
+## Must Haves
 
-- <FILL IN: e.g. backend engineer (Python, Postgres), or frontend developer (React)>
+- Fully remote work without geographic restrictions (or EMEA-friendly).
+- Primary focus on Backend engineering.
+- Modern tech stack (Python 3.9+, Docker).
 
-## Seniority
+## Nice to Haves
 
-- My years of professional experience: <FILL IN>
-- Levels I accept: <FILL IN: e.g. junior, mid>
-- Hard fail postings that require more than <FILL IN> years, or that are staff/principal level.
+- Async work culture.
+- Small to medium-sized engineering team.
 
-## Location and eligibility (HARD GATE)
+## Dealbreakers
 
-- I can work from: <FILL IN: country / region>
-- Time zones I can overlap with: <FILL IN>
-- Hard fail if the posting restricts candidates to a country or region I am not in
-  (e.g. "must reside in the US", "US time zones only", "must be authorized to work in X").
-- Contractor / employer-of-record arrangements are OK: <yes / no>
-
-## Work arrangement
-
-- <FILL IN: fully remote only / hybrid in <city> is fine / on-site in <city> is fine>
-
-## Dealbreakers (HARD FAIL)
-
-- <FILL IN: e.g. security clearance, on-call rotation, a language I do not speak>
-
-## Nice to have (bonus only, never a requirement)
-
-- <FILL IN>
+- Roles requiring primarily Frontend work (React/Vue/Angular).
+- Legacy codebases (e.g., Python 2.7, outdated PHP).
+- Forced return-to-office or hybrid requirements.
+- Web3, crypto, or gambling companies.
