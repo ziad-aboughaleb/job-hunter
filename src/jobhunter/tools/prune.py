@@ -1,3 +1,4 @@
+import concurrent.futures
 import logging
 from typing import Any
 
@@ -38,7 +39,7 @@ def build_prune_tasks(raw_config: dict, source_name: str | None) -> dict[str, li
   return target_sources
 
 
-def validate_source_slugs(source: Any, slugs: list[str]) -> tuple[list[str], int]:
+def validate_source_slugs(source: Any, slugs: list[str], max_workers: int = 10) -> tuple[list[str], int]:
   """Tests each slug via HTTP and returns the valid ones alongside the removed count."""
   valid_slugs = []
   removed_count = 0
@@ -46,22 +47,24 @@ def validate_source_slugs(source: Any, slugs: list[str]) -> tuple[list[str], int
   logger.info(f"Starting prune check for source: {source.name}")
   console.print(f"\n[cyan]Checking [bold]{source.name}[/bold] boards ({len(slugs)} slugs)...[/cyan]")
 
-  for slug in slugs:
-    status = source.validate_slug(slug)
+  def check_slug(slug: str) -> tuple[str, SlugStatus]:
+    return slug, source.validate_slug(slug)
 
-    if status is SlugStatus.VALID:
-      valid_slugs.append(slug)
-      console.print(f"  [green]✔ {slug}[/green]")
+  with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+    futures = [executor.submit(check_slug, slug) for slug in slugs]
 
-    elif status is SlugStatus.INVALID:
-      removed_count += 1
-      logger.info(f"Removing invalid slug '{slug}' from {source.name}")
-      console.print(f"  [red]✖ Removing broken slug: {slug}[/red]")
-
-    else:
-      valid_slugs.append(slug)
-      logger.warning(f"Could not definitively verify slug '{slug}' for {source.name}. Keeping it.")
-      console.print(f"  [yellow]⚠ Couldn't verify: {slug} (Keeping to be safe)[/yellow]")
+    for future in concurrent.futures.as_completed(futures):
+      slug, status = future.result()
+      if status is SlugStatus.VALID:
+        valid_slugs.append(slug)
+        console.print(f"  [green]✔ {slug}[/green]")
+      elif status is SlugStatus.INVALID:
+        removed_count += 1
+        logger.info(f"Removing invalid slug '{slug}' from {source.name}")
+        console.print(f"  [red]✖ Removing broken slug: {slug}[/red]")
+      else:
+        valid_slugs.append(slug)
+        console.print(f"  [yellow]⚠ Couldn't verify: {slug} (Keeping to be safe)[/yellow]")
 
   return valid_slugs, removed_count
 
