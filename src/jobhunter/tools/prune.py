@@ -4,6 +4,7 @@ from typing import Any
 
 from jobhunter.core.logger import console
 from jobhunter.core.paths import CONFIG_PATH, read, write
+from jobhunter.core.settings import settings
 from jobhunter.sources import SOURCES
 from jobhunter.sources.base import SlugStatus
 
@@ -39,7 +40,7 @@ def build_prune_tasks(raw_config: dict, source_name: str | None) -> dict[str, li
   return target_sources
 
 
-def validate_source_slugs(source: Any, slugs: list[str], max_workers: int = 8) -> tuple[list[str], int]:
+def validate_source_slugs(source: Any, slugs: list[str]) -> tuple[list[str], int]:
   """Tests each slug via HTTP and returns the valid ones in original order alongside the removed count."""
   valid_slugs = []
   removed_count = 0
@@ -47,8 +48,7 @@ def validate_source_slugs(source: Any, slugs: list[str], max_workers: int = 8) -
   logger.info(f"Starting prune check for source: {source.name}")
   console.print(f"\n[cyan]Checking [bold]{source.name}[/bold] boards ({len(slugs)} slugs)...[/cyan]")
 
-  workers = min(max_workers, max(1, len(slugs)))
-
+  workers = max(1, min(settings.workers.pruning_workers, 20))
   with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
     results = executor.map(source.validate_slug, slugs)
 

@@ -54,7 +54,6 @@
     "max_candidates_per_run": 30,
     "description_max_chars": 7000,
     "seen_retention_days": 90,
-    "fetch_workers": 8
   },
   "evaluating": {
     "score_threshold": 65,
@@ -81,7 +80,6 @@
     "base_url": "https://api.openai.com/v1",
     "model": "gpt-4o-mini",
     "request_delay": 5,
-    "max_workers": 1,
     "temperature": 0.0,
     "timeout": 600
   },

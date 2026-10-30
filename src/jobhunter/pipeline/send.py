@@ -116,7 +116,7 @@ def execute_telegram_sends(tasks: list[EvaluatedCandidate]) -> tuple[list[Evalua
       failed_count += 1
       console.print(f"  [red]✖ Failed to send alert for {candidate.company}[/red]")
 
-  time.sleep(1)
+    time.sleep(1)
 
   logger.info(f"Telegram dispatch complete. Successfully sent: {len(sent_candidates)}, Failed: {failed_count}")
 
@@ -124,29 +124,32 @@ def execute_telegram_sends(tasks: list[EvaluatedCandidate]) -> tuple[list[Evalua
 
 
 def save_send_results(sent_candidates: list[EvaluatedCandidate]):
-  """Updates seen.json with sent UIDs and purges sent candidates from candidates.json and evaluated.json."""
-  logger.info("Updating state files (seen.json, candidates.json, evaluated.json)...")
+  """Logs evaluated jobs to seen.json, then purges them from state files."""
+  logger.info("Updating state files...")
   console.print("[dim cyan]Updating local state files...[/dim cyan]")
 
-  sent_uids = {c.uid for c in sent_candidates}
-  if not sent_uids:
+  all_evaluated = read(DATA_PATH / "evaluated.json", list)
+  if not all_evaluated:
     return
 
-  seen_data = read(DATA_PATH / "seen.json", dict)
+  all_evaluated_uids = {e.get("uid") for e in all_evaluated if e.get("uid")}
+  sent_uids = {c.uid for c in sent_candidates}
+  current_time = int(time.time())
 
-  for uid in sent_uids:
-    seen_data[uid] = True
+  seen_data = read(DATA_PATH / "seen.json", dict)
+  for uid in all_evaluated_uids:
+    seen_data[uid] = current_time
+
+  retention_cutoff = current_time - (settings.limits.seen_retention_days * 86400)
+  seen_data = {uid: ts for uid, ts in seen_data.items() if ts > retention_cutoff}
   write(DATA_PATH / "seen.json", seen_data)
 
   candidates = read(DATA_PATH / "candidates.json", list)
-  filtered_candidates = [c for c in candidates if c.get("uid") not in sent_uids]
+  filtered_candidates = [c for c in candidates if c.get("uid") not in all_evaluated_uids]
   write(DATA_PATH / "candidates.json", filtered_candidates)
 
-  evaluated = read(DATA_PATH / "evaluated.json", list)
-  filtered_evaluated = [e for e in evaluated if e.get("uid") not in sent_uids]
-  write(DATA_PATH / "evaluated.json", filtered_evaluated)
-
-  logger.info(f"Successfully cleaned up state for {len(sent_uids)} sent candidates.")
+  failed_to_send = [e for e in all_evaluated if e.get("uid") not in sent_uids and not e.get("evaluation", {}).get("hard_fail", True)]
+  write(DATA_PATH / "evaluated.json", failed_to_send)
 
 
 def main(dry_run: bool = False):
@@ -154,17 +157,26 @@ def main(dry_run: bool = False):
   logger.info("Starting Telegram send pipeline run.")
   console.print("[bold cyan]Dispatching job evaluations to Telegram...[/bold cyan]")
 
-  tasks = build_send_tasks()
-  if not tasks:
-    logger.warning("No new passing candidates found to send.")
-    console.print("[yellow]No pending job alerts to send.[/yellow]")
+  all_evaluated = read(DATA_PATH / "evaluated.json", list)
+  if not all_evaluated:
+    logger.info("No evaluated candidates exist.")
+    console.print("[yellow]No evaluated jobs pending processing.[/yellow]")
     return
 
-  sent_candidates, failed_count = execute_telegram_sends(tasks)
+  tasks = build_send_tasks()
 
-  if sent_candidates and not dry_run:
+  sent_candidates = []
+  failed_count = 0
+
+  if tasks:
+    sent_candidates, failed_count = execute_telegram_sends(tasks)
+  else:
+    logger.info("No pending job alerts to send (all evaluated jobs hard-failed).")
+    console.print("[dim]No passing jobs to alert you about. Updating seen state...[/dim]")
+
+  if not dry_run:
     save_send_results(sent_candidates)
-  elif dry_run:
+  else:
     logger.info("Dry run enabled. Skipping state file updates.")
     console.print("\n[yellow]Dry run mode: skipped saving to local state files.[/yellow]")
 
@@ -173,7 +185,7 @@ def main(dry_run: bool = False):
 
   console.print("\n[bold]Telegram Dispatch Summary[/bold]")
   console.print("───────────────────────────────────────")
-  console.print(f"Alerts sent     : [bold green]{total_sent}[/bold green]")
-  console.print(f"Failed deliveries: [red]{failed_count}[/red]")
-  console.print(f"Dry run mode    : [yellow]{dry_run}[/yellow]")
+  console.print(f"Alerts sent       : [bold green]{total_sent}[/bold green]")
+  console.print(f"Failed deliveries : [red]{failed_count}[/red]")
+  console.print(f"Dry run mode      : [yellow]{dry_run}[/yellow]")
   console.print("───────────────────────────────────────\n")

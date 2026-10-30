@@ -14,7 +14,6 @@ app = typer.Typer(
   context_settings={"help_option_names": ["-h", "--help"]},
 )
 
-# 1. Use Annotated for reusable CLI parameters
 SourceOpt = Annotated[str | None, typer.Option("--source", "-s", help="Specific source to fetch from")]
 NoAggOpt = Annotated[bool, typer.Option("--no-aggregators", help="Skip aggregator boards")]
 IgnoreSeenOpt = Annotated[bool, typer.Option("--ignore-seen", help="Ignore seen jobs and fetch all")]

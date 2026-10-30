@@ -30,7 +30,6 @@ class LimitsConfig(BaseModel):
   max_candidates_per_run: int = 30
   description_max_chars: int = 7000
   seen_retention_days: int = 90
-  fetch_workers: int = 8
 
 
 class ScoringWeight(BaseModel):
@@ -49,7 +48,6 @@ class LLMConfig(BaseModel):
   base_url: str | None = None
   model: str | None = None
   request_delay: int = 5
-  max_workers: int = 1
   temperature: float = 0.0
   timeout: int = 600
 
@@ -57,6 +55,13 @@ class LLMConfig(BaseModel):
 class TelegramConfig(BaseModel):
   link_preview: bool = False
   notify_on_empty: bool = True
+
+
+class WorkersConfig(BaseModel):
+  evaluation_workers: int = 1
+  fetch_workers: int = 8
+  discovery_workers: int = 8
+  pruning_workers: int = 8
 
 
 class Settings(BaseSettings):
@@ -72,6 +77,7 @@ class Settings(BaseSettings):
   evaluating: EvaluatingConfig = Field(default_factory=EvaluatingConfig)
   llm: LLMConfig = Field(default_factory=LLMConfig)
   telegram: TelegramConfig = Field(default_factory=TelegramConfig)
+  workers: WorkersConfig = Field(default_factory=WorkersConfig)
 
   cv_text: str = ""
   preferences_text: str = ""

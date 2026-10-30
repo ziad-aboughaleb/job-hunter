@@ -134,7 +134,6 @@ def evaluate_search_results(
   results: list[dict],
   existing_slugs: list[str],
   session_slugs: set[str],
-  max_workers: int = 8,
 ) -> tuple[int, int]:
   """Processes raw search results, extracts candidate slugs, and validates them concurrently via HTTP."""
   candidate_slugs = []
@@ -163,8 +162,8 @@ def evaluate_search_results(
     return 0, known_count
 
   added_count = 0
-  workers = min(max_workers, len(candidate_slugs))
 
+  workers = max(1, min(settings.workers.discovery_workers, 10))
   with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
     results_map = executor.map(source.validate_slug, candidate_slugs)
 

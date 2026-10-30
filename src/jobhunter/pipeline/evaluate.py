@@ -102,10 +102,11 @@ def execute_evaluation_tasks(client: OpenAI, tasks: list[Candidate]) -> list[tup
   """Executes the AI evaluation tasks concurrently with a Rich progress bar."""
   fetched_evals: list[tuple[Candidate, EvaluationResult | None]] = []
   system_prompt = build_system_prompt()
-  max_workers = settings.llm.max_workers
   target_total = len(tasks)
 
-  logger.info(f"Executing evaluation tasks across {target_total} targets with {max_workers} workers.")
+  workers = max(1, min(settings.workers.evaluation_workers, 20))
+
+  logger.info(f"Executing evaluation tasks across {target_total} targets with {workers} workers.")
   console.print(f"[bold cyan]Evaluating {target_total} jobs with AI...[/bold cyan]")
 
   with Progress(
@@ -119,7 +120,7 @@ def execute_evaluation_tasks(client: OpenAI, tasks: list[Candidate]) -> list[tup
   ) as progress:
     eval_task = progress.add_task("[cyan]Starting evaluation...", total=target_total)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
       future_to_candidate = {executor.submit(evaluate_single_job, client, system_prompt, candidate): candidate for candidate in tasks}
 
       for future in concurrent.futures.as_completed(future_to_candidate):

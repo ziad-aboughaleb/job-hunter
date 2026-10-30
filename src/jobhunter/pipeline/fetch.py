@@ -40,10 +40,11 @@ def build_fetch_tasks(source_name: str | None, no_aggregators: bool) -> list[tup
 def execute_fetch_tasks(tasks: list[tuple]) -> list[Job]:
   """Executes the scraping tasks concurrently with a Rich progress bar."""
   fetched_jobs: list[Job] = []
-  max_workers = settings.limits.fetch_workers
   target_total = len(tasks)
 
-  logger.info(f"Executing fetch tasks across {target_total} targets with {max_workers} workers.")
+  workers = max(1, min(settings.workers.fetch_workers, 20))
+
+  logger.info(f"Executing fetch tasks across {target_total} targets with {workers} workers.")
   console.print("[bold cyan]Fetching jobs from configured sources...[/bold cyan]")
 
   with Progress(
@@ -57,7 +58,7 @@ def execute_fetch_tasks(tasks: list[tuple]) -> list[Job]:
   ) as progress:
     fetch_task = progress.add_task("[cyan]Starting fetch...", total=target_total)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
       future_to_name = {}
       for source, slug in tasks:
         name = f"{source.name}:{slug}" if slug else source.name
