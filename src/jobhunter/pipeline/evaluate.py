@@ -64,38 +64,67 @@ def build_evaluation_tasks(job_uid: str | None = None) -> list[Candidate]:
 
 
 def evaluate_single_job(client: OpenAI, system_prompt: str, candidate: Candidate) -> tuple[Candidate, EvaluationResult | None]:
-  """Calls the LLM to evaluate a single job and parses the result."""
+  """Calls the LLM to evaluate a single job and parses the result with automatic retry on rate limits."""
   user_prompt = build_user_prompt(candidate)
 
-  try:
-    response = client.chat.completions.create(
-      model=settings.llm.model or "gpt-4o-mini",
-      messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
-      response_format={"type": "json_object"},
-      temperature=settings.llm.temperature,
-      timeout=settings.llm.timeout,
-    )
+  max_retries = 5
+  base_delay = 1.5
 
-    raw_json = response.choices[0].message.content
-    if not raw_json:
-      raise ValueError("LLM returned empty content instead of JSON.")
+  for attempt in range(max_retries):
+    try:
+      response = client.chat.completions.create(
+        model=settings.llm.model or "gpt-4o-mini",
+        messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
+        response_format={"type": "json_object"},
+        temperature=settings.llm.temperature,
+        timeout=settings.llm.timeout,
+      )
 
-    eval_result = EvaluationResult.model_validate_json(raw_json)
-    return candidate, eval_result
+      raw_json = response.choices[0].message.content
+      if not raw_json:
+        raise ValueError("LLM returned empty content instead of JSON.")
 
-  except openai.BadRequestError as e:
-    console.print("\n───────── API ERROR DETAILS ─────────")
-    console.print(e.response.json())
-    console.print("───────────────────────────────────────\n")
-    raise
-  except ValidationError as ve:
-    logger.error(f"AI returned invalid schema for {candidate.company}: {ve}")
-    console.print(f"  [red]✖ AI returned invalid schema for {candidate.company}[/red]")
-    return candidate, None
-  except Exception as e:
-    logger.error(f"LLM API error evaluating {candidate.company}: {e}")
-    console.print(f"  [red]✖ LLM API error evaluating {candidate.company}: {e}[/red]")
-    return candidate, None
+      eval_result = EvaluationResult.model_validate_json(raw_json)
+      return candidate, eval_result
+
+    except openai.RateLimitError as rle:
+      if attempt < max_retries - 1:
+        sleep_time = base_delay * (2**attempt)
+        logger.warning(f"Rate limit hit (429) for {candidate.company}. Retrying in {sleep_time}s (Attempt {attempt + 1}/{max_retries})...")
+        time.sleep(sleep_time)
+        continue
+      else:
+        logger.error(f"Rate limit exceeded max retries for {candidate.company}: {rle}")
+        console.print(f"  [red]✖ Rate limit exceeded for {candidate.company} after {max_retries} retries.[/red]")
+        return candidate, None
+
+    except openai.APIStatusError as ase:
+      if ase.status_code >= 500 and attempt < max_retries - 1:
+        sleep_time = base_delay * (2**attempt)
+        time.sleep(sleep_time)
+        continue
+      console.print("\n───────── API ERROR DETAILS ─────────")
+      console.print(ase.response.json())
+      console.print("───────────────────────────────────────\n")
+      return candidate, None
+
+    except openai.BadRequestError as e:
+      console.print("\n───────── API ERROR DETAILS ─────────")
+      console.print(e.response.json())
+      console.print("───────────────────────────────────────\n")
+      return candidate, None
+
+    except ValidationError as ve:
+      logger.error(f"AI returned invalid schema for {candidate.company}: {ve}")
+      console.print(f"  [red]✖ AI returned invalid schema for {candidate.company}[/red]")
+      return candidate, None
+
+    except Exception as e:
+      logger.error(f"LLM API error evaluating {candidate.company}: {e}")
+      console.print(f"  [red]✖ LLM API error evaluating {candidate.company}: {e}[/red]")
+      return candidate, None
+
+  return candidate, None
 
 
 def execute_evaluation_tasks(client: OpenAI, tasks: list[Candidate]) -> list[tuple[Candidate, EvaluationResult | None]]:
