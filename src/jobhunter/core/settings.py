@@ -1,10 +1,12 @@
+import json
+import os
 from typing import Any
 
 from pydantic import BaseModel, Field
 from pydantic.aliases import AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from .paths import CONFIG_PATH, get_project_root, read
+from .paths import CONFIG_PATH, read
 
 
 class ProfileConfig(BaseModel):
@@ -86,20 +88,34 @@ class Settings(BaseSettings):
 
 
 def load_settings() -> Settings:
-  """Loads settings from JSON and Markdown files, returning a Settings object."""
-  config_dir = get_project_root() / "config"
-  config_data = read(CONFIG_PATH / "config.json", dict)
+  """Loads settings from files or environment variable fallbacks, returning a Settings object."""
+  config_path = CONFIG_PATH / "config.json"
+
+  if config_path.exists():
+    config_data = read(config_path, dict)
+  else:
+    config_str = os.getenv("CONFIG_JSON")
+    if config_str:
+      try:
+        config_data = json.loads(config_str)
+      except Exception:
+        config_data = {}
+    else:
+      config_data = {}
 
   # Remove "_help"
   config_data.pop("_help", None)
 
-  # Load Markdown
-  cv_path = config_dir / "cv.md"
-  pref_path = config_dir / "preferences.md"
+  # Load Markdown with env fallbacks
+  cv_path = CONFIG_PATH / "cv.md"
+  cv_text = read(cv_path) if cv_path.exists() else os.getenv("CV") or ""
+
+  pref_path = CONFIG_PATH / "preferences.md"
+  preferences_text = read(pref_path) if pref_path.exists() else os.getenv("PREFERENCES") or ""
 
   return Settings(
-    cv_text=cv_path.read_text(encoding="utf-8") if cv_path.exists() else "",
-    preferences_text=pref_path.read_text(encoding="utf-8") if pref_path.exists() else "",
+    cv_text=cv_text,
+    preferences_text=preferences_text,
     **config_data,
   )
 

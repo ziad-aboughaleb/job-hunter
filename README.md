@@ -60,6 +60,9 @@ cp examples/preferences.example.md config/preferences.md
 cp examples/cv.example.json config/cv.md # (rename or write as Markdown)
 ```
 
+> **💡 Note on Environment Fallbacks & GitHub Actions:**
+> `JobHunter` automatically falls back to environment variables (`CONFIG_JSON`, `CV`, `PREFERENCES`) if physical configuration files do not exist on disk. This allows deploying via GitHub Actions on public repositories using GitHub Secrets instead of committing sensitive files.
+
 ### 4. Run the Pipeline
 
 Execute the full pipeline (Fetch -> Evaluate -> Send):

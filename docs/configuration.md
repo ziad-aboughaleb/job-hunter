@@ -264,3 +264,41 @@ Add your new source name and company board slugs under the `companies` section i
   }
 }
 ```
+
+---
+
+## 🚀 GitHub Actions & Deployment Setup
+
+`JobHunter` includes automated GitHub Actions workflows located in `.github/workflows/`:
+
+1. **`job-pipeline.yml`**: Runs daily at 8:00 AM Cairo time (with automatic UTC conversion and random jitter) and every 8 hours after that with `--no-aggregators`. Automatically commits and pushes state updates (`seen.json`, etc.).
+2. **`job-maintenance.yml`**: Runs weekly on Sundays at 3:00 AM UTC to execute `discover` and `prune` with `--write` and pushes updated `config/config.json`.
+
+### 🔐 Required GitHub Secrets
+
+Configure the following secrets in your GitHub repository (`Settings > Secrets and variables > Actions`):
+
+- `TELEGRAM_BOT_TOKEN`: Your Telegram bot token.
+- `TELEGRAM_CHAT_ID`: Your Telegram chat ID.
+- `LLM_API_KEY`: Your LLM / OpenAI API key.
+
+### 🛡️ Repository Privacy & File Tracking
+
+Because sensitive personal files (`config/config.json`, `config/cv.md`, `config/preferences.md`, and active state files in `data/`) are git-ignored by default except `data/seen`:
+
+1. **Option A: Private Repository (Recommended)**
+   - If you want to track your configuration and state files directly in the repository, you must **force push** them initially:
+     ```bash
+     git add -f config/config.json config/cv.md config/preferences.md data/candidates.json data/evaluated.json
+     git commit -m "chore: add initial configuration and state"
+     git push origin main
+     ```
+   - ⚠️ **Security Warning:** You **must** ensure your GitHub repository is set to **Private** to protect your personal CV, preferences, and API tokens.
+
+2. **Option B: Public Repository with GitHub Secrets**
+   - If your repository is **Public**, do **not** commit your private CV, preferences, or config files.
+   - Instead, store their contents as GitHub Secrets and map them in your workflow environment:
+     - `CONFIG_JSON` (mapped to `config.json` content)
+     - `CV` (mapped to `cv.md` content)
+     - `PREFERENCES` (mapped to `preferences.md` content)
+   - `JobHunter` features built-in environment variable fallbacks in `settings.py`: if physical files do not exist on disk, it automatically loads configuration, CV, and preferences from environment variables (`CONFIG_JSON`, `CV`, and `PREFERENCES`).
