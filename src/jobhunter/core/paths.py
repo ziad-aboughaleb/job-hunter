@@ -55,9 +55,9 @@ def write(path_from_root: str | Path, data: Any, timeout: int = 10):
   elif isinstance(data, str):
     raw_bytes = data.encode("utf-8")
   elif isinstance(data, (dict, list)):
-    raw_bytes = json.dumps(data, indent=4, default=_json_default).encode("utf-8")
+    raw_bytes = json.dumps(data, indent=2, default=_json_default).encode("utf-8")
   elif hasattr(data, "model_dump"):
-    raw_bytes = json.dumps(data.model_dump(mode="json"), indent=4).encode("utf-8")
+    raw_bytes = json.dumps(data.model_dump(mode="json"), indent=2).encode("utf-8")
   else:
     raw_bytes = str(data).encode("utf-8")
 
