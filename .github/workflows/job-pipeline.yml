@@ -2,8 +2,10 @@ name: Job Pipeline
 
 on:
   schedule:
-    # Runs every day at 6:00 UTC (8:00 AM Cairo time UTC+2) and every 8 hours after that (14:00, 22:00 UTC)
-    - cron: "0 6,14,22 * * *"
+    # 1. First daily run (Aggregators ENABLED)
+    - cron: "0 6 * * *"
+    # 2. Subsequent daily runs (Aggregators DISABLED)
+    - cron: "0 14,22 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -98,9 +100,13 @@ jobs:
             if [ -n "${{ inputs.limit }}" ] && [ "${{ inputs.limit }}" -gt 0 ]; then
               CMD="$CMD --limit ${{ inputs.limit }}"
             fi
-          else
-            # Default for scheduled runs: aggregators disabled
-            CMD="$CMD --no-aggregators"
+          elif [ "${{ github.event_name }}" == "schedule" ]; then
+            if [ "${{ github.event.schedule }}" == "0 6 * * *" ]; then
+              echo "Morning schedule triggered: Aggregators ENABLED"
+            else
+              echo "Subsequent schedule triggered: Aggregators DISABLED"
+              CMD="$CMD --no-aggregators"
+            fi
           fi
 
           echo "Executing: $CMD"
@@ -118,12 +124,10 @@ jobs:
 
           git add data/seen.json
 
-          # Only push candidates.json if it already existed in the repo prior to the run
           if [ "$CANDIDATES_EXISTS" == "true" ] && [ -f "data/candidates.json" ]; then
             git add data/candidates.json
           fi
 
-          # Only push evaluated.json if it already existed in the repo prior to the run
           if [ "$EVALUATED_EXISTS" == "true" ] && [ -f "data/evaluated.json" ]; then
             git add data/evaluated.json
           fi
