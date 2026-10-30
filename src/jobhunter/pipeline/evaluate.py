@@ -178,10 +178,7 @@ def format_evaluation_results(fetched_evals: list[tuple[Candidate, EvaluationRes
 
     candidate.status = "evaluated"
 
-    evaluated_candidate = EvaluatedCandidate(
-      **candidate.model_dump(),
-      evaluation=evaluation
-    )
+    evaluated_candidate = EvaluatedCandidate(**candidate.model_dump(), evaluation=evaluation)
 
     if evaluation.hard_fail:
       hard_failed += 1

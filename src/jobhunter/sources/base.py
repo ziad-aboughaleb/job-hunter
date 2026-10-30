@@ -75,26 +75,26 @@ class BaseSource(ABC):
       return []
 
     if not self.is_aggregator and not slug:
-      logger.warning(f"[{self.name}] Skipping execution: Non-aggregator sources require a slug.")
+      logger.warning(f"[ {self.name} ] Skipping execution: Non-aggregator sources require a slug.")
       return []
 
     try:
       return self.fetch(slug=slug) or []
 
     except httpx.HTTPStatusError as e:
-      logger.error(f"[{self.name}] HTTP {e.response.status_code} error for slug '{slug}': {e}")
+      logger.error(f"[ {self.name} ] HTTP {e.response.status_code} error for slug '{slug}': {e}")
       return []
 
     except httpx.RequestError as e:
-      logger.error(f"[{self.name}] Network error while connecting to '{slug}': {e}")
+      logger.error(f"[ {self.name} ] Network error while connecting to '{slug}': {e}")
       return []
 
     except ValueError as e:
-      logger.error(f"[{self.name}] Validation error for slug '{slug}': {e}")
+      logger.error(f"[ {self.name} ] Validation error for slug '{slug}': {e}")
       return []
 
     except Exception as e:
-      logger.exception(f"[{self.name}] Unexpected error executing scraper for slug '{slug}': {e}")
+      logger.exception(f"[ {self.name} ] Unexpected error executing scraper for slug '{slug}': {e}")
       return []
 
   @abstractmethod
