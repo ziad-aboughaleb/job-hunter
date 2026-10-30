@@ -145,15 +145,11 @@ def execute_evaluation_tasks(client: OpenAI, tasks: list[Candidate]) -> list[tup
 
           except concurrent.futures.TimeoutError:
             logger.error(f"Task for {name} timed out.")
-            fetched_evals.append((candidate, None))
             progress.update(eval_task, advance=1)
-            progress.console.print(f"  [dim red]⚠ Timeout for {name}. Skipping...[/dim red]")
 
           except Exception as e:
             logger.exception(f"Error executing evaluation task for {name}: {e}")
-            fetched_evals.append((candidate, None))
             progress.update(eval_task, advance=1)
-            progress.console.print(f"  [bold red]✖ Thread crashed for {name}[/bold red]")
 
           submit_next()
         time.sleep(settings.llm.request_delay)

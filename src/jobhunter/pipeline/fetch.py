@@ -89,12 +89,10 @@ def execute_fetch_tasks(tasks: list[tuple]) -> list[Job]:
           except concurrent.futures.TimeoutError:
             logger.error(f"Task for {name} timed out.")
             progress.update(fetch_task, advance=1)
-            progress.console.print(f"  [dim red]⚠ Timeout for {name}. Skipping...[/dim red]")
 
           except Exception as e:
             logger.exception(f"Error executing fetch task for {name}: {e}")
             progress.update(fetch_task, advance=1)
-            progress.console.print(f"  [bold red]✖ Scraper crashed for {name}[/bold red]")
 
           submit_next()
 
