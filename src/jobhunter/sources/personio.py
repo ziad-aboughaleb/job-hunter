@@ -16,7 +16,9 @@ logger = logging.getLogger(__name__)
 class Source(BaseSource):
   name = "personio"
   domains = ["personio.de", "personio.com"]
-  url_patterns = [re.compile(r"(?://|https?://)(?!www\.)(?P<slug>[a-zA-Z0-9-]+)\.(?:jobs\.)?personio\.(?:de|com|es|fr|it)")]
+  url_patterns = [
+    re.compile(r"(?://|https?://)(?!www\.)(?P<slug>[a-zA-Z0-9-]+)\.(?:jobs\.)?personio\.(?:de|com|es|fr|it)"),
+  ]
 
   def fetch(self, slug: str = "", skip_parsing: bool = False, **kwargs) -> list[Job]:
     """Fetches job listings from a specific company's Personio XML feed."""

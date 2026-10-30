@@ -1,10 +1,12 @@
 import logging
+import time
 
 import httpx
 
 from jobhunter.core.logger import console
 from jobhunter.core.paths import DATA_PATH, read, write
 from jobhunter.core.settings import settings
+from jobhunter.core.textutil import clean_html
 from jobhunter.models import EvaluatedCandidate
 
 logger = logging.getLogger(__name__)
@@ -36,13 +38,11 @@ def build_send_tasks() -> list[EvaluatedCandidate]:
 
 
 def send_single_telegram_message(candidate: EvaluatedCandidate) -> bool:
-  """Sends a formatted job evaluation message via Telegram Bot API with priority and score distinctions."""
   token = settings.telegram_bot_token
   chat_id = settings.telegram_chat_id
-
   eval_data = candidate.evaluation
 
-  priority_badge = "⭐ *[VIP COMPANY]* " if candidate.priority else ""
+  priority_badge = "⭐ <b>[VIP COMPANY]</b> " if candidate.priority else ""
 
   score_threshold = settings.evaluating.score_threshold
   if eval_data.score >= 80:
@@ -52,27 +52,27 @@ def send_single_telegram_message(candidate: EvaluatedCandidate) -> bool:
   else:
     score_emoji = "🟠"
 
-  pitch_section = f"\n💡 *Pitch:*\n{eval_data.pitch}\n" if eval_data.pitch else ""
+  pitch_section = f"\n💡 <b>Pitch:</b>\n{clean_html(eval_data.pitch)}\n" if eval_data.pitch else ""
 
   message = f"""
-🎯 *New Job Match!*
-{priority_badge}({score_emoji} Score: `{eval_data.score}/100`)
+🎯 <b>New Job Match!</b>
+{priority_badge}({score_emoji} Score: <code>{eval_data.score}/100</code>)
 
-🏢 *Company:* {candidate.company}
-💼 *Title:* {candidate.title}
-📍 *Location:* {candidate.location or "Remote"}
+🏢 <b>Company:</b> {clean_html(candidate.company)}
+💼 <b>Title:</b> {clean_html(candidate.title)}
+📍 <b>Location:</b> {clean_html(candidate.location) or "Remote"}
 
-🔍 *Reasoning:*\n{eval_data.reasoning}
-📈 *Score Breakdown:*\n{eval_data.score_explanation}
+🔍 <b>Reasoning:</b>\n{clean_html(eval_data.reasoning)}
+📈 <b>Score Breakdown:</b>\n{clean_html(eval_data.score_explanation)}
 {pitch_section}
-🔗 [View Job Posting]({candidate.url})
+🔗 <a href="{candidate.url}">View Job Posting</a>
 """
 
   url = f"https://api.telegram.org/bot{token}/sendMessage"
   payload = {
     "chat_id": chat_id,
     "text": message,
-    "parse_mode": "Markdown",
+    "parse_mode": "HTML",
     "disable_web_page_preview": True,
   }
 
@@ -80,6 +80,10 @@ def send_single_telegram_message(candidate: EvaluatedCandidate) -> bool:
     response = httpx.post(url, json=payload, timeout=10.0)
     response.raise_for_status()
     return True
+  except httpx.HTTPStatusError as e:
+    logger.exception(f"Telegram API Error ({e.response.status_code}) for {candidate.company}: {e.response.text}")
+    console.print(f"  [red]✖ Telegram API Error: {e.response.status_code}[/red]")
+    return False
   except Exception as e:
     logger.exception(f"Failed to send Telegram notification for {candidate.company}: {e}")
     console.print(f"  [red]✖ Failed to send Telegram notification for {candidate.company}[/red]")
@@ -111,6 +115,8 @@ def execute_telegram_sends(tasks: list[EvaluatedCandidate]) -> tuple[list[Evalua
     else:
       failed_count += 1
       console.print(f"  [red]✖ Failed to send alert for {candidate.company}[/red]")
+
+  time.sleep(1)
 
   logger.info(f"Telegram dispatch complete. Successfully sent: {len(sent_candidates)}, Failed: {failed_count}")
 

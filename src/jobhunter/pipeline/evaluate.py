@@ -104,7 +104,6 @@ def execute_evaluation_tasks(client: OpenAI, tasks: list[Candidate]) -> list[tup
   system_prompt = build_system_prompt()
   max_workers = settings.llm.max_workers
   target_total = len(tasks)
-  candidate_iter = iter(tasks)
 
   logger.info(f"Executing evaluation tasks across {target_total} targets with {max_workers} workers.")
   console.print(f"[bold cyan]Evaluating {target_total} jobs with AI...[/bold cyan]")
@@ -121,51 +120,36 @@ def execute_evaluation_tasks(client: OpenAI, tasks: list[Candidate]) -> list[tup
     eval_task = progress.add_task("[cyan]Starting evaluation...", total=target_total)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-      future_to_candidate = {}
+      future_to_candidate = {executor.submit(evaluate_single_job, client, system_prompt, candidate): candidate for candidate in tasks}
 
-      def submit_next():
+      for future in concurrent.futures.as_completed(future_to_candidate):
+        candidate = future_to_candidate[future]
+        name = candidate.company or "Unknown"
+
         try:
-          c = next(candidate_iter)
-          future = executor.submit(evaluate_single_job, client, system_prompt, c)
-          future_to_candidate[future] = c
-        except StopIteration:
-          pass
+          result = future.result(timeout=settings.llm.timeout + 10)
+          fetched_evals.append(result)
 
-      for _ in range(min(max_workers, target_total)):
-        submit_next()
-
-      while future_to_candidate:
-        done, _ = concurrent.futures.wait(future_to_candidate.keys(), return_when=concurrent.futures.FIRST_COMPLETED)
-
-        for future in done:
-          candidate = future_to_candidate.pop(future)
-          name = candidate.company or "Unknown"
-
-          try:
-            result = future.result(timeout=settings.llm.timeout + 10)
-            fetched_evals.append(result)
-
-            if result[1] is not None:
-              score = result[1].score
-              color = "green" if score >= settings.evaluating.score_threshold else "yellow"
-
-              progress.update(eval_task, advance=1, description=f"[cyan]Evaluating... [dim](Finished {name} - [{color}]{score}[/{color}][/dim])")
-            else:
-              progress.update(eval_task, advance=1)
-              progress.console.print(f"  [dim red]⚠ API/Validation Error for {name}. Skipping...[/dim red]")
-
-          except concurrent.futures.TimeoutError:
-            logger.error(f"Task for {name} timed out.")
-            console.print(f"  [red]✖ Evaluation for {name} timed out.[/red]")
+          if result[1] is not None:
+            score = result[1].score
+            color = "green" if score >= settings.evaluating.score_threshold else "yellow"
+            progress.update(eval_task, advance=1, description=f"[cyan]Evaluating... [dim](Finished {name} - [{color}]{score}[/{color}][/dim])")
+          else:
             progress.update(eval_task, advance=1)
+            progress.console.print(f"  [dim red]⚠ API/Validation Error for {name}. Skipping...[/dim red]")
 
-          except Exception as e:
-            logger.exception(f"Error executing evaluation task for {name}: {e}")
-            console.print(f"  [red]✖ Error evaluating {name}: {e}[/red]")
-            progress.update(eval_task, advance=1)
+        except concurrent.futures.TimeoutError:
+          logger.error(f"Task for {name} timed out.")
+          console.print(f"  [red]✖ Evaluation for {name} timed out.[/red]")
+          progress.update(eval_task, advance=1)
 
-          submit_next()
-        time.sleep(settings.llm.request_delay)
+        except Exception as e:
+          logger.exception(f"Error executing evaluation task for {name}: {e}")
+          console.print(f"  [red]✖ Error evaluating {name}: {e}[/red]")
+          progress.update(eval_task, advance=1)
+
+        if settings.llm.request_delay > 0:
+          time.sleep(settings.llm.request_delay)
 
     progress.update(eval_task, description="[bold green]Evaluation complete![/bold green]")
 

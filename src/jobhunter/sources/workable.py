@@ -13,7 +13,9 @@ logger = logging.getLogger(__name__)
 class Source(BaseSource):
   name = "workable"
   domains = ["apply.workable.com"]
-  url_patterns = [re.compile(r"apply\.workable\.com/(?P<slug>[a-zA-Z0-9_-]+)")]
+  url_patterns = [
+    re.compile(r"apply\.workable\.com/(?P<slug>[^/?#]+)"),
+  ]
 
   @staticmethod
   def _parse_location(item: dict, location_obj: dict) -> str:

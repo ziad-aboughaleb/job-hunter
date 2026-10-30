@@ -42,7 +42,6 @@ def execute_fetch_tasks(tasks: list[tuple]) -> list[Job]:
   fetched_jobs: list[Job] = []
   max_workers = settings.limits.fetch_workers
   target_total = len(tasks)
-  task_iter = iter(tasks)
 
   logger.info(f"Executing fetch tasks across {target_total} targets with {max_workers} workers.")
   console.print("[bold cyan]Fetching jobs from configured sources...[/bold cyan]")
@@ -60,43 +59,30 @@ def execute_fetch_tasks(tasks: list[tuple]) -> list[Job]:
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
       future_to_name = {}
+      for source, slug in tasks:
+        name = f"{source.name}:{slug}" if slug else source.name
+        future = executor.submit(source.execute_scraper, slug)
+        future_to_name[future] = name
 
-      def submit_next():
+      for future in concurrent.futures.as_completed(future_to_name):
+        name = future_to_name[future]
+
         try:
-          source, slug = next(task_iter)
-          name = f"{source.name}:{slug}" if slug else source.name
-          future = executor.submit(source.execute_scraper, slug)
-          future_to_name[future] = name
-        except StopIteration:
-          pass
+          result = future.result(timeout=60)
+          if result:
+            fetched_jobs.extend(result)
 
-      for _ in range(min(max_workers, target_total)):
-        submit_next()
+          progress.update(fetch_task, advance=1, description=f"[cyan]Fetching... [dim](Finished {name})[/dim]")
 
-      while future_to_name:
-        done, _ = concurrent.futures.wait(future_to_name.keys(), return_when=concurrent.futures.FIRST_COMPLETED)
+        except concurrent.futures.TimeoutError:
+          logger.error(f"Task for {name} timed out.")
+          console.print(f"  [red]✖ Task for {name} timed out.[/red]")
+          progress.update(fetch_task, advance=1)
 
-        for future in done:
-          name = future_to_name.pop(future)
-
-          try:
-            result = future.result(timeout=60)
-            if result:
-              fetched_jobs.extend(result)
-
-            progress.update(fetch_task, advance=1, description=f"[cyan]Fetching... [dim](Finished {name})[/dim]")
-
-          except concurrent.futures.TimeoutError:
-            logger.error(f"Task for {name} timed out.")
-            console.print(f"  [red]✖ Task for {name} timed out.[/red]")
-            progress.update(fetch_task, advance=1)
-
-          except Exception as e:
-            logger.exception(f"Error executing fetch task for {name}: {e}")
-            console.print(f"  [red]✖ Error fetching {name}: {e}[/red]")
-            progress.update(fetch_task, advance=1)
-
-          submit_next()
+        except Exception as e:
+          logger.exception(f"Error executing fetch task for {name}: {e}")
+          console.print(f"  [red]✖ Error fetching {name}: {e}[/red]")
+          progress.update(fetch_task, advance=1)
 
     progress.update(fetch_task, description="[bold green]Fetch complete![/bold green]")
 

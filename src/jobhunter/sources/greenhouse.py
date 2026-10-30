@@ -13,7 +13,9 @@ logger = logging.getLogger(__name__)
 class Source(BaseSource):
   name = "greenhouse"
   domains = ["boards.greenhouse.io", "job-boards.greenhouse.io"]
-  url_patterns = [re.compile(r"greenhouse\.io/(?P<slug>[^/]+)")]
+  url_patterns = [
+    re.compile(r"greenhouse\.io/(?P<slug>[^/?#]+)"),
+  ]
 
   def fetch(self, slug: str = "", skip_parsing: bool = False, **kwargs) -> list[Job]:
     """Fetches job listings from a specific company's Greenhouse API."""

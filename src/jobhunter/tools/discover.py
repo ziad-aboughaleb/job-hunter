@@ -1,3 +1,4 @@
+import concurrent.futures
 import logging
 import time
 from collections import defaultdict
@@ -12,10 +13,6 @@ from jobhunter.sources import SOURCES
 from jobhunter.sources.base import SlugStatus
 
 logger = logging.getLogger(__name__)
-
-QUERY_LIMIT = 6
-RETRIES = 3
-BACKOFF = 1.5
 
 HIGHLY_UNLIKELY_SLUGS = {
   "www",
@@ -96,7 +93,7 @@ def get_target_titles(titles_override: str | None) -> list[str]:
     console.print("  [yellow]⚠ No target titles found in config.json filters.title_include.[/yellow]")
     return []
 
-  target_titles = titles[:QUERY_LIMIT]
+  target_titles = titles[:6]
   logger.info(f"Target titles resolved: {', '.join(target_titles)}")
   console.print(f"[dim]Target titles for discovery: {', '.join(target_titles)}[/dim]")
 
@@ -132,9 +129,15 @@ def build_discovery_tasks(source_name: str | None) -> dict[str, Any]:
   return active_sources
 
 
-def evaluate_search_results(source: Any, results: list[dict], existing_slugs: list[str], session_slugs: set[str]) -> tuple[int, int]:
-  """Processes raw search results, extracts slugs, and validates them via HTTP."""
-  added_count = 0
+def evaluate_search_results(
+  source: Any,
+  results: list[dict],
+  existing_slugs: list[str],
+  session_slugs: set[str],
+  max_workers: int = 8,
+) -> tuple[int, int]:
+  """Processes raw search results, extracts candidate slugs, and validates them concurrently via HTTP."""
+  candidate_slugs = []
   known_count = 0
 
   for result in results:
@@ -150,26 +153,37 @@ def evaluate_search_results(source: Any, results: list[dict], existing_slugs: li
     if slug in HIGHLY_UNLIKELY_SLUGS:
       continue
 
-    if slug in existing_slugs or slug in session_slugs:
+    if slug in existing_slugs or slug in session_slugs or slug in candidate_slugs:
       known_count += 1
       continue
 
-    status = source.validate_slug(slug)
+    candidate_slugs.append(slug)
 
-    if status is SlugStatus.VALID:
-      session_slugs.add(slug)
-      added_count += 1
-      logger.info(f"Found new valid slug for {source.name}: {slug}")
-    elif status is SlugStatus.INVALID:
-      console.print(f"  [dim red]✖ Not a real board: {slug}[/dim red]")
-    else:
-      console.print(f"  [dim yellow]? Couldn't verify: {slug}[/dim yellow]")
+  if not candidate_slugs:
+    return 0, known_count
+
+  added_count = 0
+  workers = min(max_workers, len(candidate_slugs))
+
+  with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+    results_map = executor.map(source.validate_slug, candidate_slugs)
+
+    for slug, status in zip(candidate_slugs, results_map, strict=True):
+      if status is SlugStatus.VALID:
+        session_slugs.add(slug)
+        added_count += 1
+        logger.info(f"Found new valid slug for {source.name}: {slug}")
+        console.print(f"  [green]✔ Found valid board: {slug}[/green]")
+      elif status is SlugStatus.INVALID:
+        console.print(f"  [dim red]✖ Not a real board: {slug}[/dim red]")
+      else:
+        console.print(f"  [dim yellow]? Couldn't verify: {slug}[/dim yellow]")
 
   return added_count, known_count
 
 
 def execute_discovery_searches(active_sources: dict[str, Any], target_titles: list[str]) -> dict[str, set[str]]:
-  """Runs the search queries across all domains and topics, managing rate limits."""
+  """Runs search queries sequentially across targets while validating discovered slugs in parallel."""
   logger.info("Executing search queries...")
   new_slugs: dict[str, set[str]] = defaultdict(set)
 
@@ -185,7 +199,7 @@ def execute_discovery_searches(active_sources: dict[str, Any], target_titles: li
         console.print(f"\n[cyan]Searching [bold]{name}[/bold][/cyan] ([dim]{query}[/dim])...")
 
         try:
-          results = search_with_retries(query, retries=RETRIES, backoff=BACKOFF)
+          results = search_with_retries(query)
           consecutive_errors = 0
 
           if not results:
@@ -207,8 +221,6 @@ def execute_discovery_searches(active_sources: dict[str, Any], target_titles: li
             logger.warning(f"Circuit breaker triggered for {name}: 3 consecutive failures.")
             console.print("  [yellow]⚠ Stopping early: 3 consecutive searches failed (likely rate-limited).[/yellow]")
             break
-
-        time.sleep(BACKOFF)
 
       if consecutive_errors >= 3:
         break

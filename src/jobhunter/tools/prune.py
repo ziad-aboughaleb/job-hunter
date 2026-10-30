@@ -39,22 +39,20 @@ def build_prune_tasks(raw_config: dict, source_name: str | None) -> dict[str, li
   return target_sources
 
 
-def validate_source_slugs(source: Any, slugs: list[str], max_workers: int = 10) -> tuple[list[str], int]:
-  """Tests each slug via HTTP and returns the valid ones alongside the removed count."""
+def validate_source_slugs(source: Any, slugs: list[str], max_workers: int = 8) -> tuple[list[str], int]:
+  """Tests each slug via HTTP and returns the valid ones in original order alongside the removed count."""
   valid_slugs = []
   removed_count = 0
 
   logger.info(f"Starting prune check for source: {source.name}")
   console.print(f"\n[cyan]Checking [bold]{source.name}[/bold] boards ({len(slugs)} slugs)...[/cyan]")
 
-  def check_slug(slug: str) -> tuple[str, SlugStatus]:
-    return slug, source.validate_slug(slug)
+  workers = min(max_workers, max(1, len(slugs)))
 
-  with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-    futures = [executor.submit(check_slug, slug) for slug in slugs]
+  with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+    results = executor.map(source.validate_slug, slugs)
 
-    for future in concurrent.futures.as_completed(futures):
-      slug, status = future.result()
+    for slug, status in zip(slugs, results, strict=True):
       if status is SlugStatus.VALID:
         valid_slugs.append(slug)
         console.print(f"  [green]✔ {slug}[/green]")
@@ -64,6 +62,7 @@ def validate_source_slugs(source: Any, slugs: list[str], max_workers: int = 10) 
         console.print(f"  [red]✖ Removing broken slug: {slug}[/red]")
       else:
         valid_slugs.append(slug)
+        logger.warning(f"Could not definitively verify slug '{slug}' for {source.name}. Keeping it.")
         console.print(f"  [yellow]⚠ Couldn't verify: {slug} (Keeping to be safe)[/yellow]")
 
   return valid_slugs, removed_count
@@ -87,11 +86,12 @@ def execute_prune_checks(target_sources: dict[str, list[str]]) -> tuple[dict[str
 
 def save_prune_results(raw_config: dict, new_companies: dict, removed_count: int, write_flag: bool):
   """Merges the pruned company list back into config and persists to disk if requested."""
-  for name, slugs in new_companies.items():
-    raw_config["companies"][name] = slugs
-
   if write_flag:
+    for name, slugs in new_companies.items():
+      raw_config["companies"][name] = slugs
+
     write(CONFIG_PATH / "config.json", raw_config)
+
     logger.info(f"Successfully pruned {removed_count} broken slugs from config.json.")
     console.print(f"\n[bold green]Successfully pruned {removed_count} broken slugs and saved config.json![/bold green]")
   else:
