@@ -160,14 +160,14 @@ def limit_fetch_results(scored_candidates: list[Candidate], limit: int | None = 
   logger.info("Enforcing limits...")
   console.print("[dim cyan]Enforcing candidate limits...[/dim cyan]")
 
-  max_candidates = limit or settings.limits.max_candidates_per_run
+  final_limit = limit or settings.limits.max_candidates_per_run
 
   final_candidates = []
   non_priority_count = 0
 
   for candidate in scored_candidates:
     if not candidate.priority:
-      if non_priority_count >= max_candidates:
+      if non_priority_count >= final_limit:
         continue
       non_priority_count += 1
 

@@ -32,7 +32,7 @@ def run_all(
   dry_run: DryRunOpt = False,
 ):
   fetch.main(source_name=source, no_aggregators=no_aggregators, ignore_seen=ignore_seen, limit=limit)
-  evaluate.main()
+  evaluate.main(limit=limit)
   send.main(dry_run=dry_run)
 
 
@@ -47,8 +47,11 @@ def fetch_jobs(
 
 
 @app.command("evaluate", help="Score and evaluate candidates")
-def evaluate_jobs(job: JobUidOpt = None):
-  evaluate.main(job_uid=job)
+def evaluate_jobs(
+  job: JobUidOpt = None,
+  limit: LimitOpt = None,
+):
+  evaluate.main(job_uid=job, limit=limit)
 
 
 @app.command("send", help="Send passing jobs to Telegram")

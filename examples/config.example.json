@@ -86,5 +86,11 @@
   "telegram": {
     "link_preview": false,
     "notify_on_empty": true
+  },
+  "workers": {
+    "fetch_workers": 8,
+    "evaluation_workers": 1,
+    "discovery_workers": 8,
+    "pruning_workers": 8
   }
 }

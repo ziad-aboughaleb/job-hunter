@@ -32,7 +32,7 @@ def setup_llm_client() -> OpenAI:
   )
 
 
-def build_evaluation_tasks(job_uid: str | None = None) -> list[Candidate]:
+def build_evaluation_tasks(job_uid: str | None = None, limit: int | None = None) -> list[Candidate]:
   """Loads candidates from disk and filters for those pending evaluation."""
   logger.info("Building evaluation tasks...")
 
@@ -57,6 +57,10 @@ def build_evaluation_tasks(job_uid: str | None = None) -> list[Candidate]:
     except Exception as e:
       logger.error(f"Failed to parse candidate {item.get('uid', 'unknown')}: {e}")
       console.print(f"  [red]✖ Failed to parse candidate {item.get('uid', 'unknown')}[/red]")
+
+  final_limit = limit or settings.limits.max_candidates_per_run
+  if final_limit and final_limit > 0:
+    tasks = tasks[:final_limit]
 
   logger.info(f"Generated {len(tasks)} evaluation tasks from {len(raw_candidates)} total candidates.")
 
@@ -248,13 +252,13 @@ def save_evaluation_results(final_evaluations: list[EvaluatedCandidate]):
   logger.info(f"Successfully saved {len(final_evaluations)} evaluations to disk.")
 
 
-def main(job_uid: str | None = None):
+def main(job_uid: str | None = None, limit: int | None = None):
   """Orchestrates the AI evaluation pipeline."""
   logger.info("Starting AI Evaluation Pipeline run.")
 
   client = setup_llm_client()
 
-  tasks = build_evaluation_tasks(job_uid)
+  tasks = build_evaluation_tasks(job_uid, limit)
   if not tasks:
     logger.warning("No active candidates found to evaluate.")
     console.print("[yellow]No active candidates found to evaluate.[/yellow]")
