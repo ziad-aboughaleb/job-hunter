@@ -232,7 +232,6 @@ wheels = [
 
 [[package]]
 name = "jobhunter-cli"
-version = "1.0"
 source = { editable = "." }
 dependencies = [
     { name = "ddgs" },

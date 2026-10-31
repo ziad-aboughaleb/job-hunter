@@ -1,6 +1,6 @@
 [project]
 name = "jobhunter-cli"
-version = "1.0"
+dynamic = ["version"]
 description = "An AI-powered, zero-database Python CLI that automates job hunting. It scrapes ATS boards, evaluates candidate-job fit using LLMs against your CV, and dispatches real-time Telegram alerts."
 readme = "README.md"
 authors = [{ name = "ziad-aboughaleb", email = "ziadaboughaleb@gmail.com" }]
@@ -23,15 +23,21 @@ dev = ["ruff>=0.17.2"]
 jobhunter = "jobhunter.main:main"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/jobhunter/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/jobhunter"]
 
 # ruff formater settings
 [tool.ruff]
-line-length = 999
+line-length = 240
 indent-width = 2
 
 [tool.ruff.lint]
