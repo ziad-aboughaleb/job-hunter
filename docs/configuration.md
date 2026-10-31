@@ -6,7 +6,11 @@
 
 ## 🔐 Environment Variables (`.env`)
 
-Secrets and API credentials are managed via Pydantic `BaseSettings` and `.env`. Create a `.env` file in the root directory based on `.env.example`:
+Secrets and API credentials are managed via Pydantic `BaseSettings` and `.env`.
+
+> **💡 Pro Tip:** If you installed the CLI via PyPI, simply run `jobhunter init` in an empty directory. This will automatically scaffold your workspace, creating the `.env` file and downloading all necessary templates into a `config/` directory.
+
+If you are setting it up manually, create a `.env` file in your root directory based on `.env.example`:
 
 ```env
 # Telegram Bot Configuration

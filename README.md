@@ -25,50 +25,45 @@
 - **Python >= 3.14**
 - **uv** (recommended Python package and project manager)
 
-### 1. Clone & Install
+### 1. Install
+
+Install the CLI globally via PyPI using `uv` (recommended) or `pip`:
 
 ```bash
-git clone https://github.com/ziad-aboughaleb/job-hunter-v2.git
-cd job-hunter-v2
-uv sync
+uv tool install jobhunter-cli
+# OR
+pip install jobhunter-cli
 ```
 
-### 2. Configure Environment Variables
+### 2. Initialize Your Workspace
 
-Copy the example environment file and add your API keys:
+Create a dedicated folder for your job search and run the `init` command to automatically download the configuration templates:
 
 ```bash
-cp .env.example .env
+mkdir my-job-search && cd my-job-search
+jobhunter init
 ```
 
-Edit `.env`:
+### 3. Configure
 
-```env
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
-TELEGRAM_CHAT_ID=your_telegram_chat_id_here
-LLM_API_KEY=your_openai_or_compatible_api_key_here
-```
+The `init` command creates a `.env` file and a `config/` directory.
 
-### 3. Set Up Configuration & Profile
+1. Open `.env` and add your API keys:
+   ```env
+   TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+   TELEGRAM_CHAT_ID=your_telegram_chat_id_here
+   LLM_API_KEY=your_openai_or_compatible_api_key_here
+   ```
+2. Edit the templates in the `config/` folder (`config.json`, `cv.md`, `preferences.md`) with your specific details.
 
-Create or copy configuration files in the `config/` directory (examples are provided in `examples/`):
-
-```bash
-cp examples/config.example.json config/config.json
-cp examples/preferences.example.md config/preferences.md
-# Create your cv.md in config/
-cp examples/cv.example.json config/cv.md # (rename or write as Markdown)
-```
-
-> **💡 Note on Environment Fallbacks & GitHub Actions:**
-> `JobHunter` automatically falls back to environment variables (`CONFIG_JSON`, `CV`, `PREFERENCES`) if physical configuration files do not exist on disk. This allows deploying via GitHub Actions on public repositories using GitHub Secrets instead of committing sensitive files.
+> **💡 Note on GitHub Actions:** `JobHunter` automatically falls back to environment variables (`CONFIG_JSON`, `CV`, `PREFERENCES`) if physical files do not exist on disk. This allows deploying via GitHub Actions on public repositories using GitHub Secrets.
 
 ### 4. Run the Pipeline
 
-Execute the full pipeline (Fetch -> Evaluate -> Send):
+Execute the full pipeline (Fetch -> Evaluate -> Send) from within your workspace directory:
 
 ```bash
-uv run jobhunter run
+jobhunter run
 ```
 
 ---
@@ -89,7 +84,7 @@ uv run jobhunter run
 
 ## 📖 Documentation Deep Dives
 
-For comprehensive technical documentation, consult the `docs/` folder:
+For comprehensive technical documentation, consult the downloaded `docs/` folder or view them on GitHub:
 
 - **[Architecture Guide](docs/architecture.md)**: Detailed breakdown of the decoupled pipeline modules, concurrency model, and zero-database state lifecycle.
 - **[Configuration & Settings](docs/configuration.md)**: Comprehensive guide to `config.json`, Pydantic settings, environment variables, and prompt engineering setup (`cv.md` / `preferences.md`).
@@ -98,12 +93,27 @@ For comprehensive technical documentation, consult the `docs/` folder:
 
 ## 💻 CLI Commands Reference
 
-| Command              | Description                                           | Key Options                                                                     |
-| :------------------- | :---------------------------------------------------- | :------------------------------------------------------------------------------ |
-| `jobhunter run`      | Runs the full pipeline (fetch -> evaluate -> send)    | `-s, --source`, `--no-aggregators`, `--ignore-seen`, `-l, --limit`, `--dry-run` |
-| `jobhunter fetch`    | Scrapes and filters jobs from configured boards       | `-s, --source`, `--no-aggregators`, `--ignore-seen`, `-l, --limit`              |
-| `jobhunter evaluate` | Scores and evaluates pending candidates using AI      | `-j, --job <UID>`, `-l, --limit`                                                |
-| `jobhunter send`     | Dispatches passing job evaluations to Telegram        | `--dry-run`                                                                     |
-| `jobhunter discover` | Discovers new company ATS slugs via DuckDuckGo        | `-w, --write`, `-s, --source`, `-t, --titles`                                   |
-| `jobhunter prune`    | Validates and prunes broken company slugs from config | `-w, --write`, `-s, --source`                                                   |
-| `jobhunter prompt`   | Prints the compiled AI evaluation system prompt       | None                                                                            |
+| Command              | Description                                                 | Key Options                                                                                                                                                                                                                    |
+| :------------------- | :---------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `jobhunter init`     | Scaffolds a new workspace by downloading templates and docs | `[TARGET_DIR]` (Target directory to initialize)                                                                                                                                                                                |
+| `jobhunter run`      | Runs the full pipeline (fetch -> evaluate -> send)          | `-s, --source` (Specific ATS/aggregator to fetch from)<br>`--no-aggregators` (Skip aggregators)<br>`--ignore-seen` (Ignore seen cache)<br>`-l, --limit` (Override max candidates)<br>`--dry-run` (Alert without cache updates) |
+| `jobhunter fetch`    | Scrapes and filters jobs from configured boards             | `-s, --source`, `--no-aggregators`, `--ignore-seen`, `-l, --limit`                                                                                                                                                             |
+| `jobhunter evaluate` | Scores and evaluates pending candidates using AI            | `-j, --job` (Evaluate specific job UID), `-l, --limit`                                                                                                                                                                         |
+| `jobhunter send`     | Dispatches passing job evaluations to Telegram              | `--dry-run`                                                                                                                                                                                                                    |
+| `jobhunter discover` | Discovers new company ATS slugs via DuckDuckGo              | `-w, --write` (Persist to config), `-s, --source`, `-t, --titles` (Comma-separated titles)                                                                                                                                     |
+| `jobhunter prune`    | Validates and prunes broken company slugs from config       | `-w, --write`, `-s, --source`                                                                                                                                                                                                  |
+| `jobhunter prompt`   | Prints the compiled AI evaluation system prompt             | None                                                                                                                                                                                                                           |
+
+---
+
+## 🏗️ Building from Source (Development)
+
+If you want to contribute or modify the source code directly:
+
+```bash
+git clone https://github.com/ziad-aboughaleb/job-hunter.git
+cd job-hunter
+uv sync
+uv run jobhunter init
+uv run jobhunter run
+```

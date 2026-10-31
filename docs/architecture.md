@@ -36,6 +36,7 @@ src/jobhunter/
 │   └── workable.py     # Workable ATS board source adapter
 └── tools/
     ├── discover.py     # DuckDuckGo-powered company ATS board discovery
+    ├── init.py         # Scaffolds user workspace with config templates and docs
     ├── prompt.py       # Compiled system prompt inspection tool
     └── prune.py        # Automated dead board validation and pruning
 ```
