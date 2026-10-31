@@ -102,7 +102,7 @@ For comprehensive technical documentation, consult the `docs/` folder:
 | :------------------- | :---------------------------------------------------- | :------------------------------------------------------------------------------ |
 | `jobhunter run`      | Runs the full pipeline (fetch -> evaluate -> send)    | `-s, --source`, `--no-aggregators`, `--ignore-seen`, `-l, --limit`, `--dry-run` |
 | `jobhunter fetch`    | Scrapes and filters jobs from configured boards       | `-s, --source`, `--no-aggregators`, `--ignore-seen`, `-l, --limit`              |
-| `jobhunter evaluate` | Scores and evaluates pending candidates using AI      | `-j, --job <UID>`                                                               |
+| `jobhunter evaluate` | Scores and evaluates pending candidates using AI      | `-j, --job <UID>`, `-l, --limit`                                                |
 | `jobhunter send`     | Dispatches passing job evaluations to Telegram        | `--dry-run`                                                                     |
 | `jobhunter discover` | Discovers new company ATS slugs via DuckDuckGo        | `-w, --write`, `-s, --source`, `-t, --titles`                                   |
 | `jobhunter prune`    | Validates and prunes broken company slugs from config | `-w, --write`, `-s, --source`                                                   |

@@ -126,7 +126,7 @@ The `config/config.json` file controls search targets, filtering rules, scoring 
 ### Configuration Sections Breakdown
 
 - **`profile`**: Defines target roles (`target_roles`) used in prompt generation and hard gate evaluation.
-- **`boards`**: Toggles aggregator boards (`remotive`, `remoteok`, `arbeitnow`) on or off.
+- **`boards`**: Toggles specific ATS boards and aggregators (`greenhouse`, `lever`, `ashby`, `personio`, `workable`, `recruitee`, `remotive`, `remoteok`, `arbeitnow`) on or off, accepting either a boolean flag (`true`/`false`) or a configuration dictionary (e.g., `{"enabled": true, ...}`).
 - **`companies`**: Maps ATS source names (`greenhouse`, `lever`, `personio`, `workable`, `recruitee`, `ashby`) to lists of company board slugs.
 - **`filters`**:
   - `title_include` / `title_exclude`: Regex word-boundary filters for job titles.

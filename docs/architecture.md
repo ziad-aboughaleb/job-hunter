@@ -13,20 +13,31 @@ src/jobhunter/
 ├── main.py             # Typer CLI entrypoint and command router
 ├── models.py           # Pydantic data models (Job, Candidate, EvaluationResult, EvaluatedCandidate)
 ├── core/
-│   ├── settings.py     # Pydantic Settings & configuration loading
-│   ├── paths.py        # Atomic file I/O, path resolution, and file locking
-│   ├── http.py         # Robust HTTP client with retries and exponential backoff
 │   ├── filters.py      # Regex word-boundary filters and scoring utilities
-│   ├── textutil.py     # HTML cleaning and date parsing utilities
-│   └── logger.py       # Rich console and logging configuration
+│   ├── http.py         # Robust HTTP client with retries and exponential backoff
+│   ├── logger.py       # Rich console and logging configuration
+│   ├── paths.py        # Atomic file I/O, path resolution, and file locking
+│   ├── settings.py     # Pydantic Settings & configuration loading
+│   └── textutil.py     # HTML cleaning and date parsing utilities
 ├── pipeline/
-│   ├── fetch.py        # Stage 1-3: Scraping, filtering, deduplication, and scoring
 │   ├── evaluate.py     # Stage 4: AI evaluation via OpenAI/LLM API
+│   ├── fetch.py        # Stage 1-3: Scraping, filtering, deduplication, and scoring
 │   └── send.py         # Stage 5: Telegram dispatch and state lifecycle management
+├── sources/
+│   ├── arbeitnow.py    # Arbeitnow aggregator source adapter
+│   ├── ashby.py        # Ashby ATS board source adapter
+│   ├── base.py         # Base ATS scraper & slug validator
+│   ├── greenhouse.py   # Greenhouse ATS board source adapter
+│   ├── lever.py        # Lever ATS board source adapter
+│   ├── personio.py     # Personio ATS board source adapter
+│   ├── recruitee.py    # Recruitee ATS board source adapter
+│   ├── remoteok.py     # RemoteOK aggregator source adapter
+│   ├── remotive.py     # Remotive aggregator source adapter
+│   └── workable.py     # Workable ATS board source adapter
 └── tools/
     ├── discover.py     # DuckDuckGo-powered company ATS board discovery
-    ├── prune.py        # Automated dead board validation and pruning
-    └── prompt.py       # Compiled system prompt inspection tool
+    ├── prompt.py       # Compiled system prompt inspection tool
+    └── prune.py        # Automated dead board validation and pruning
 ```
 
 ### 1. Fetch & Filter Pipeline (`fetch.py`)
@@ -38,10 +49,10 @@ src/jobhunter/
 
 ### 2. AI Evaluation Pipeline (`evaluate.py`)
 
-- **Task Loading**: Reads `data/candidates.json` and `data/evaluated.json`, isolating candidates that have not yet been evaluated.
-- **Structured LLM Calls**: Submits each candidate along with the compiled system prompt (containing the candidate CV, preferences, hard gates, and scoring rubric) to the OpenAI-compatible LLM client. Enforces `response_format={"type": "json_object"}`.
-- **Validation**: Parses and validates the LLM response against the `EvaluationResult` Pydantic model.
-- **Persistence**: Sorts evaluated candidates by match score descending and atomically persists them to `data/evaluated.json`.
+- **Task Loading & Filtering**: Reads `data/candidates.json` and `data/evaluated.json`, isolating pending candidates not yet evaluated. Supports evaluating specific candidates via `--job <UID>` or overriding run candidate limits via `--limit <INT>`.
+- **Structured LLM Calls & Resilient Retries**: Submits each candidate along with the compiled system prompt to the OpenAI-compatible LLM client (`response_format={"type": "json_object"}`). Features automatic exponential backoff retries on transient network errors, rate limits (`RateLimitError`, 429), and server errors (`APIStatusError`, 5xx).
+- **Validation & Fallback Parsing**: Parses and validates LLM responses against the `EvaluationResult` Pydantic model, with built-in markdown block cleanup (`json ... `) and fallback parsing. On schema validation failure, logs offending raw JSON for easy debugging.
+- **Concurrency & Persistence**: Executes evaluation tasks across `settings.workers.evaluation_workers`, sorts successfully evaluated candidates by match score descending, and atomically persists them to `data/evaluated.json`.
 
 ### 3. Telegram Dispatch & State Management (`send.py`)
 
