@@ -28,7 +28,10 @@ build-backend = "hatchling.build"
 
 [tool.hatch.version]
 source = "vcs"
-raw-options = { version_scheme = "python-pre-tag", local_scheme = "no-local-version" }
+
+[tool.hatch.version.raw-options]
+version_scheme = "no-guess-dev"
+local_scheme = "no-local-version"
 
 [tool.hatch.build.hooks.vcs]
 version-file = "src/jobhunter/_version.py"
