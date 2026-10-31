@@ -1,6 +1,6 @@
 [project]
 name = "jobhunter-cli"
-version = "0.1.1"
+version = "0.1.0"
 description = "An AI-powered, zero-database Python CLI that automates job hunting. It scrapes ATS boards, evaluates candidate-job fit using LLMs against your CV, and dispatches real-time Telegram alerts."
 readme = "README.md"
 authors = [{ name = "ziad-aboughaleb", email = "ziadaboughaleb@gmail.com" }]
