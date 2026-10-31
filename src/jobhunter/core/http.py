@@ -44,15 +44,14 @@ def fetch_url(url: str, headers: dict | None = None, timeout: float = 15.0, retr
       return response
 
     except httpx.HTTPError as e:
-      is_client_not_found = isinstance(e, httpx.HTTPStatusError) and e.response.status_code in {404, 410}
-
-      if attempt == retries - 1 or not _should_retry(e):
+      if _should_retry(e) and attempt < retries - 1:
+        time.sleep(backoff * (2**attempt))
+      else:
+        is_client_not_found = isinstance(e, httpx.HTTPStatusError) and e.response.status_code in {404, 410}
         if not is_client_not_found:
           logger.error(f"HTTP request failed permanently for {url}: {e}")
           console.print(f"  [red]✖ Network error fetching {url}: {e}[/red]")
         raise
-
-      time.sleep(backoff * (2**attempt))
 
     except ValueError as e:
       raise RuntimeError(f"JSON decoding or type error for {url}: {e}") from e

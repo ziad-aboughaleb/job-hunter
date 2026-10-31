@@ -63,14 +63,11 @@ def build_evaluation_tasks(job_uid: str | None = None) -> list[Candidate]:
   return tasks
 
 
-def evaluate_single_job(client: OpenAI, system_prompt: str, candidate: Candidate) -> tuple[Candidate, EvaluationResult | None]:
+def evaluate_single_job(client: OpenAI, system_prompt: str, candidate: Candidate, retries: int = 5, backoff: float = 1.5) -> tuple[Candidate, EvaluationResult | None]:
   """Calls the LLM to evaluate a single job and parses the result with automatic retry and JSON cleanup fallbacks."""
   user_prompt = build_user_prompt(candidate)
 
-  max_retries = 5
-  base_delay = 1.5
-
-  for attempt in range(max_retries):
+  for attempt in range(retries):
     raw_json = ""
 
     try:
@@ -102,31 +99,24 @@ def evaluate_single_job(client: OpenAI, system_prompt: str, candidate: Candidate
         return candidate, eval_result
 
     except openai.RateLimitError as rle:
-      if attempt < max_retries - 1:
-        sleep_time = base_delay * (2**attempt)
-        logger.warning(f"Rate limit hit (429) for {candidate.company}. Retrying in {sleep_time}s (Attempt {attempt + 1}/{max_retries})...")
+      if attempt < retries - 1:
+        sleep_time = backoff * (2**attempt)
+        logger.warning(f"Rate limit hit (429) for {candidate.company}. Retrying in {sleep_time}s (Attempt {attempt + 1}/{retries})...")
         time.sleep(sleep_time)
-        continue
       else:
         logger.error(f"Rate limit exceeded max retries for {candidate.company}: {rle}")
-        console.print(f"  [red]✖ Rate limit exceeded for {candidate.company} after {max_retries} retries.[/red]")
+        console.print(f"  [red]✖ Rate limit exceeded for {candidate.company} after {retries} retries.[/red]")
         return candidate, None
 
     except openai.APIStatusError as ase:
-      if ase.status_code >= 500 and attempt < max_retries - 1:
-        sleep_time = base_delay * (2**attempt)
+      if ase.status_code >= 500 and attempt < retries - 1:
+        sleep_time = backoff * (2**attempt)
         time.sleep(sleep_time)
-        continue
-      console.print("\n───────── API ERROR DETAILS ─────────")
-      console.print(ase.response.json())
-      console.print("───────────────────────────────────────\n")
-      return candidate, None
-
-    except openai.BadRequestError as e:
-      console.print("\n───────── API ERROR DETAILS ─────────")
-      console.print(e.response.json())
-      console.print("───────────────────────────────────────\n")
-      return candidate, None
+      else:
+        console.print("\n───────── API ERROR DETAILS ─────────")
+        console.print(ase.response.json() if hasattr(ase, "response") else str(ase))
+        console.print("───────────────────────────────────────\n")
+        return candidate, None
 
     except ValidationError as ve:
       logger.error(f"AI returned invalid schema for {candidate.company}: {ve}")
