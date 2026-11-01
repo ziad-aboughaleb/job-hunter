@@ -3,14 +3,14 @@ name: Job Maintenance & Discovery
 on:
   schedule:
     # Runs once a week: every Sunday at 3:00 AM UTC
-    - cron: '0 3 * * 0'
+    - cron: "0 3 * * 0"
   workflow_dispatch:
     inputs:
       source:
-        description: 'Run discovery/prune for a specific source only (optional)'
+        description: "Run discovery/prune for a specific source only (optional)"
         type: string
         required: false
-        default: ''
+        default: ""
 
 jobs:
   maintenance:
@@ -32,7 +32,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version-file: ".python-version"
-          cache: "uv"
 
       - name: Install dependencies
         run: uv sync
