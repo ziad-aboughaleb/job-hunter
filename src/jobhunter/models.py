@@ -41,9 +41,6 @@ class Candidate(BaseModel):
   @classmethod
   def from_job(cls, job: Job, priority: bool, stack_hits: int) -> Candidate:
     """Factory method to convert a raw scraped Job into a stored Candidate."""
-    max_chars = settings.limits.description_max_chars
-    truncated_description = (job.description or "No description provided.")[:max_chars]
-
     return cls(
       uid=job.uid,
       priority=priority,
@@ -58,7 +55,7 @@ class Candidate(BaseModel):
       location=job.location,
       remote=job.remote,
       posted=job.posted,
-      description=truncated_description,
+      description=job.description,
     )
 
 
