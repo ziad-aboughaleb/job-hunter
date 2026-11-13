@@ -78,7 +78,6 @@ class EvaluatedCandidate(Candidate):
   evaluation: EvaluationResult
 
 
-
 class HistoryEntry(BaseModel):
   """Compact audit record of an evaluated candidate (excludes description)."""
 
@@ -108,6 +107,7 @@ class HistoryEntry(BaseModel):
 class StageMetrics(BaseModel):
   # Fetch
   fetched_total: int = 0
+  filtered_passed: int = 0
   skipped_seen: int = 0
   skipped_dupes: int = 0
   skipped_filters: int = 0
