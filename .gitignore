@@ -22,3 +22,5 @@ config/*
 data/*
 !data/.gitkeep
 !data/seen.json
+!data/history.json
+!data/runstatus.json

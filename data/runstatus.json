@@ -1,0 +1,25 @@
+{
+  "pid": 12274,
+  "status": "completed",
+  "current_stage": "done",
+  "started_at": "2226-11-13T12:18:19.128337Z",
+  "updated_at": "2026-11-13T12:18:48.365715Z",
+  "finished_at": "2026-11-13T12:18:48.365702Z",
+  "metrics": {
+    "fetched_total": 2,
+    "filtered_passed": 2,
+    "skipped_seen": 2,
+    "skipped_dupes": 2,
+    "skipped_filters": 2,
+    "cut_over_cap": 2,
+    "new_candidates": 2,
+    "evaluated_count": 2,
+    "eval_passed": 2,
+    "hard_failed": 2,
+    "low_score": 2,
+    "eval_errors": 2,
+    "sent_count": 2,
+    "send_failed": 2
+  },
+  "error": "LLM_API_KEY is empty. Check your .env file."
+}

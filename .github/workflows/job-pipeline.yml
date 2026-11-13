@@ -122,6 +122,8 @@ jobs:
           git status
 
           git add data/seen.json
+          git add data/history.json
+          git add data/runstatus.json
 
           if [ "$CANDIDATES_EXISTS" == "true" ] && [ -f "data/candidates.json" ]; then
             git add data/candidates.json
