@@ -8,6 +8,7 @@ from jobhunter.core.filters import count_stack_hits, passes_all_filters
 from jobhunter.core.logger import console
 from jobhunter.core.paths import DATA_PATH, read, write
 from jobhunter.core.settings import settings
+from jobhunter.core.status import save_status, start_stage
 from jobhunter.models import Candidate, Job
 from jobhunter.sources import SOURCES
 
@@ -200,34 +201,60 @@ def save_fetch_results(final_candidates: list[Candidate]):
   logger.info(f"Successfully saved {len(final_candidates)} candidates to disk.")
 
 
-def main(source_name: str | None = None, no_aggregators: bool = False, ignore_seen: bool = False, limit: int | None = None):
+def main(source_name: str | None = None, no_aggregators: bool = False, ignore_seen: bool = False, limit: int | None = None, complete_on_exit: bool = True):
   """Orchestrates the job fetching pipeline."""
-  logger.info("Starting job fetch pipeline run.")
+  status = start_stage("fetch", reset=True)
+  try:
+    logger.info("Starting job fetch pipeline run.")
 
-  tasks = build_fetch_tasks(source_name, no_aggregators)
-  if not tasks:
-    logger.warning("No active sources/companies found to scrape.")
-    console.print("[yellow]No active sources/companies found to scrape.[/yellow]")
-    return
+    tasks = build_fetch_tasks(source_name, no_aggregators)
+    if not tasks:
+      logger.warning("No active sources/companies found to scrape.")
+      console.print("[yellow]No active sources/companies found to scrape.[/yellow]")
+      if complete_on_exit:
+        status.mark_completed()
+      save_status(status)
+      return
 
-  fetched_jobs = execute_fetch_tasks(tasks)
+    fetched_jobs = execute_fetch_tasks(tasks)
 
-  passing_jobs, skipped_pend, skipped_seen, skipped_dupes, skipped_filters = filter_fetch_results(fetched_jobs, ignore_seen)
-  scored_candidates = score_fetch_results(passing_jobs)
-  final_candidates, cut_over_cap = limit_fetch_results(scored_candidates, limit)
+    passing_jobs, skipped_pend, skipped_seen, skipped_dupes, skipped_filters = filter_fetch_results(fetched_jobs, ignore_seen)
+    scored_candidates = score_fetch_results(passing_jobs)
+    final_candidates, cut_over_cap = limit_fetch_results(scored_candidates, limit)
 
-  if final_candidates:
-    save_fetch_results(final_candidates)
+    if final_candidates:
+      save_fetch_results(final_candidates)
 
-  logger.info(f"Pipeline finished. Raw: {len(fetched_jobs)} | Pend: {skipped_pend} | Seen: {skipped_seen} | Dupe: {skipped_dupes} | Failed Filters: {skipped_filters} | Cut: {cut_over_cap} | Candidates: {len(final_candidates)}")
+    logger.info(f"Pipeline finished. Raw: {len(fetched_jobs)} | Pend: {skipped_pend} | Seen: {skipped_seen} | Dupe: {skipped_dupes} | Failed Filters: {skipped_filters} | Cut: {cut_over_cap} | Candidates: {len(final_candidates)}")
 
-  console.print("\n[bold]Fetch Summary[/bold]")
-  console.print("───────────────────────────────────────")
-  console.print(f"Total raw jobs  : [cyan]{len(fetched_jobs)}[/cyan]")
-  console.print(f"Skipped (pend)  : [yellow]{skipped_pend}[/yellow]")
-  console.print(f"Skipped (seen)  : [yellow]{skipped_seen}[/yellow]")
-  console.print(f"Skipped (dupe)  : [yellow]{skipped_dupes}[/yellow]")
-  console.print(f"Failed filters  : [magenta]{skipped_filters}[/magenta]")
-  console.print(f"Cut over cap    : [yellow]{cut_over_cap}[/yellow]")
-  console.print(f"New candidates  : [bold green]{len(final_candidates)}[/bold green]")
-  console.print("───────────────────────────────────────\n")
+    console.print("\n[bold]Fetch Summary[/bold]")
+    console.print("───────────────────────────────────────")
+    console.print(f"Total raw jobs  : [cyan]{len(fetched_jobs)}[/cyan]")
+    console.print(f"Skipped (pend)  : [yellow]{skipped_pend}[/yellow]")
+    console.print(f"Skipped (seen)  : [yellow]{skipped_seen}[/yellow]")
+    console.print(f"Skipped (dupe)  : [yellow]{skipped_dupes}[/yellow]")
+    console.print(f"Failed filters  : [magenta]{skipped_filters}[/magenta]")
+    console.print(f"Cut over cap    : [yellow]{cut_over_cap}[/yellow]")
+    console.print(f"New candidates  : [bold green]{len(final_candidates)}[/bold green]")
+    console.print("───────────────────────────────────────\n")
+
+    status.metrics.fetched_total = len(fetched_jobs)
+    status.metrics.filtered_passed = len(passing_jobs)
+    status.metrics.skipped_seen = skipped_seen
+    status.metrics.skipped_dupes = skipped_dupes
+    status.metrics.skipped_filters = skipped_filters
+    status.metrics.cut_over_cap = cut_over_cap
+    status.metrics.new_candidates = len(final_candidates)
+
+    if complete_on_exit:
+      status.mark_completed()
+    save_status(status)
+
+  except KeyboardInterrupt:
+    status.mark_failed("Aborted by user")
+    save_status(status)
+    raise
+  except Exception as e:
+    status.mark_failed(str(e))
+    save_status(status)
+    raise

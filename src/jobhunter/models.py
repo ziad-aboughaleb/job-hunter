@@ -1,6 +1,8 @@
-from pydantic import BaseModel, Field, computed_field
+import os
+from datetime import UTC, datetime
+from typing import Literal
 
-from jobhunter.core.settings import settings
+from pydantic import BaseModel, Field, computed_field
 
 
 class Job(BaseModel):
@@ -26,7 +28,6 @@ class Candidate(BaseModel):
   uid: str = Field(..., description="Unique compound identifier: source:board:job_id_or_url")
   priority: bool = False
   stack_hits: int = 0
-  status: str = Field(default="pending", description="Pipeline status: pending, saved, applied, rejected")
   source: str = ""
   board: str = ""
   company: str
@@ -45,7 +46,6 @@ class Candidate(BaseModel):
       uid=job.uid,
       priority=priority,
       stack_hits=stack_hits,
-      status="pending",
       source=job.source,
       board=job.board,
       company=job.company,
@@ -76,3 +76,82 @@ class EvaluatedCandidate(Candidate):
   """A candidate that has been evaluated by the AI."""
 
   evaluation: EvaluationResult
+
+
+
+class HistoryEntry(BaseModel):
+  """Compact audit record of an evaluated candidate (excludes description)."""
+
+  uid: str
+  recorded_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+  passed: bool
+  priority: bool = False
+  stack_hits: int = 0
+  source: str = ""
+  board: str = ""
+  company: str
+  job_id: str = ""
+  title: str
+  url: str
+  location: str
+  remote: bool | None = None
+  posted: str = ""
+  evaluation: EvaluationResult
+
+  @classmethod
+  def from_evaluated(cls, candidate: EvaluatedCandidate, passed: bool) -> HistoryEntry:
+    """Factory method to strip description and convert an EvaluatedCandidate."""
+    data = candidate.model_dump(exclude={"description"})
+    return cls(**data, passed=passed)
+
+
+class StageMetrics(BaseModel):
+  # Fetch
+  fetched_total: int = 0
+  skipped_seen: int = 0
+  skipped_dupes: int = 0
+  skipped_filters: int = 0
+  cut_over_cap: int = 0
+  new_candidates: int = 0
+
+  # Evaluate
+  evaluated_count: int = 0
+  eval_passed: int = 0
+  hard_failed: int = 0
+  low_score: int = 0
+  eval_errors: int = 0
+
+  # Send
+  sent_count: int = 0
+  send_failed: int = 0
+
+
+class RunStatus(BaseModel):
+  """Tracks pipeline state across fetch, evaluate, and send."""
+
+  pid: int = Field(default_factory=os.getpid)
+  status: Literal["running", "completed", "failed"] = "running"
+  current_stage: Literal["fetch", "evaluate", "send", "done"] = "fetch"
+  started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+  updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+  finished_at: datetime | None = None
+  metrics: StageMetrics = Field(default_factory=StageMetrics)
+  error: str | None = None
+
+  def set_stage(self, stage: Literal["fetch", "evaluate", "send"]) -> None:
+    self.current_stage = stage
+    self.updated_at = datetime.now(UTC)
+
+  def mark_completed(self) -> None:
+    now = datetime.now(UTC)
+    self.status = "completed"
+    self.current_stage = "done"
+    self.updated_at = now
+    self.finished_at = now
+
+  def mark_failed(self, error: str) -> None:
+    now = datetime.now(UTC)
+    self.status = "failed"
+    self.error = error
+    self.updated_at = now
+    self.finished_at = now

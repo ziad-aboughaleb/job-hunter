@@ -11,6 +11,7 @@ from rich.table import Column
 from jobhunter.core.logger import console
 from jobhunter.core.paths import DATA_PATH, read, write
 from jobhunter.core.settings import settings
+from jobhunter.core.status import save_status, start_stage
 from jobhunter.models import Candidate, EvaluatedCandidate, EvaluationResult
 from jobhunter.tools.prompt import build_system_prompt, build_user_prompt
 
@@ -212,8 +213,6 @@ def format_evaluation_results(fetched_evals: list[tuple[Candidate, EvaluationRes
       errors += 1
       continue
 
-    candidate.status = "evaluated"
-
     evaluated_candidate = EvaluatedCandidate(**candidate.model_dump(), evaluation=evaluation)
 
     if evaluation.hard_fail:
@@ -252,33 +251,57 @@ def save_evaluation_results(final_evaluations: list[EvaluatedCandidate]):
   logger.info(f"Successfully saved {len(final_evaluations)} evaluations to disk.")
 
 
-def main(job_uid: str | None = None, limit: int | None = None):
+def main(job_uid: str | None = None, limit: int | None = None, complete_on_exit: bool = True):
   """Orchestrates the AI evaluation pipeline."""
-  logger.info("Starting AI Evaluation Pipeline run.")
+  status = start_stage("evaluate")
+  try:
+    logger.info("Starting AI Evaluation Pipeline run.")
 
-  client = setup_llm_client()
+    client = setup_llm_client()
 
-  tasks = build_evaluation_tasks(job_uid, limit)
-  if not tasks:
-    logger.warning("No active candidates found to evaluate.")
-    console.print("[yellow]No active candidates found to evaluate.[/yellow]")
-    return
+    tasks = build_evaluation_tasks(job_uid, limit)
+    if not tasks:
+      logger.warning("No active candidates found to evaluate.")
+      console.print("[yellow]No active candidates found to evaluate.[/yellow]")
+      if complete_on_exit:
+        status.mark_completed()
+      save_status(status)
+      return
 
-  fetched_evals = execute_evaluation_tasks(client, tasks)
-  final_evaluations, passed, hard_failed, low_score, errors = format_evaluation_results(fetched_evals)
+    fetched_evals = execute_evaluation_tasks(client, tasks)
+    final_evaluations, passed, hard_failed, low_score, errors = format_evaluation_results(fetched_evals)
 
-  if final_evaluations:
-    save_evaluation_results(final_evaluations)
+    if final_evaluations:
+      save_evaluation_results(final_evaluations)
 
-  total_successful = passed + hard_failed + low_score
-  logger.info(f"Pipeline finished. Evaluated: {total_successful} | Passed: {passed} | Hard Failed: {hard_failed} | Low Score: {low_score} | Errors: {errors}")
+    total_successful = passed + hard_failed + low_score
+    logger.info(f"Pipeline finished. Evaluated: {total_successful} | Passed: {passed} | Hard Failed: {hard_failed} | Low Score: {low_score} | Errors: {errors}")
 
-  console.print("\n[bold]AI Evaluation Summary[/bold]")
-  console.print("───────────────────────────────────────")
-  console.print(f"Total evaluated : [cyan]{total_successful}[/cyan]")
-  console.print(f"Passed          : [bold green]{passed}[/bold green]")
-  console.print(f"Failed (Gates)  : [red]{hard_failed}[/red]")
-  console.print(f"Failed (Score)  : [yellow]{low_score}[/yellow]")
-  if errors:
-    console.print(f"API Errors      : [bold red]{errors}[/bold red]")
-  console.print("───────────────────────────────────────\n")
+    console.print("\n[bold]AI Evaluation Summary[/bold]")
+    console.print("───────────────────────────────────────")
+    console.print(f"Total evaluated : [cyan]{total_successful}[/cyan]")
+    console.print(f"Passed          : [bold green]{passed}[/bold green]")
+    console.print(f"Failed (Gates)  : [red]{hard_failed}[/red]")
+    console.print(f"Failed (Score)  : [yellow]{low_score}[/yellow]")
+    if errors:
+      console.print(f"API Errors      : [bold red]{errors}[/bold red]")
+    console.print("───────────────────────────────────────\n")
+
+    status.metrics.evaluated_count = total_successful
+    status.metrics.eval_passed = passed
+    status.metrics.hard_failed = hard_failed
+    status.metrics.low_score = low_score
+    status.metrics.eval_errors = errors
+
+    if complete_on_exit:
+      status.mark_completed()
+    save_status(status)
+
+  except KeyboardInterrupt:
+    status.mark_failed("Aborted by user")
+    save_status(status)
+    raise
+  except Exception as e:
+    status.mark_failed(str(e))
+    save_status(status)
+    raise

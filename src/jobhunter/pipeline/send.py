@@ -6,8 +6,9 @@ import httpx
 from jobhunter.core.logger import console
 from jobhunter.core.paths import DATA_PATH, read, write
 from jobhunter.core.settings import settings
+from jobhunter.core.status import save_status, start_stage
 from jobhunter.core.textutil import clean_html
-from jobhunter.models import EvaluatedCandidate
+from jobhunter.models import EvaluatedCandidate, HistoryEntry
 
 logger = logging.getLogger(__name__)
 
@@ -139,10 +140,24 @@ def save_send_results(sent_candidates: list[EvaluatedCandidate]):
   seen_data = read(DATA_PATH / "seen.json", dict)
   for uid in all_evaluated_uids:
     seen_data[uid] = current_time
-
   retention_cutoff = current_time - (settings.limits.seen_retention_days * 86400)
   seen_data = {uid: ts for uid, ts in seen_data.items() if ts > retention_cutoff}
+  seen_data = dict(sorted(seen_data.items(), key=lambda item: item[1], reverse=True))
   write(DATA_PATH / "seen.json", seen_data)
+
+  history_data = read(DATA_PATH / "history.json", dict)
+  for item in all_evaluated:
+    uid = item.get("uid")
+    if uid in seen_data:
+      eval_cand = EvaluatedCandidate(**item)
+      entry = HistoryEntry.from_evaluated(
+        eval_cand,
+        passed=not eval_cand.evaluation.hard_fail,
+      )
+      history_data[uid] = entry.model_dump(mode="json")
+  history_data = {uid: rec for uid, rec in history_data.items() if uid in seen_data}
+  history_data = dict(sorted(history_data.items(), key=lambda item: item[1].get("recorded_at", ""), reverse=True))
+  write(DATA_PATH / "history.json", history_data)
 
   candidates = read(DATA_PATH / "candidates.json", list)
   filtered_candidates = [c for c in candidates if c.get("uid") not in all_evaluated_uids]
@@ -152,40 +167,61 @@ def save_send_results(sent_candidates: list[EvaluatedCandidate]):
   write(DATA_PATH / "evaluated.json", failed_to_send)
 
 
-def main(dry_run: bool = False):
+def main(dry_run: bool = False, complete_on_exit: bool = True):
   """Orchestrates the Telegram notification pipeline."""
-  logger.info("Starting Telegram send pipeline run.")
-  console.print("[bold cyan]Dispatching job evaluations to Telegram...[/bold cyan]")
+  status = start_stage("send")
+  try:
+    logger.info("Starting Telegram send pipeline run.")
+    console.print("[bold cyan]Dispatching job evaluations to Telegram...[/bold cyan]")
 
-  all_evaluated = read(DATA_PATH / "evaluated.json", list)
-  if not all_evaluated:
-    logger.info("No evaluated candidates exist.")
-    console.print("[yellow]No evaluated jobs pending processing.[/yellow]")
-    return
+    all_evaluated = read(DATA_PATH / "evaluated.json", list)
+    if not all_evaluated:
+      logger.info("No evaluated candidates exist.")
+      console.print("[yellow]No evaluated jobs pending processing.[/yellow]")
+      if complete_on_exit:
+        status.mark_completed()
+      save_status(status)
+      return
 
-  tasks = build_send_tasks()
+    tasks = build_send_tasks()
 
-  sent_candidates = []
-  failed_count = 0
+    sent_candidates = []
+    failed_count = 0
 
-  if tasks:
-    sent_candidates, failed_count = execute_telegram_sends(tasks)
-  else:
-    logger.info("No pending job alerts to send (all evaluated jobs hard-failed).")
-    console.print("[dim]No passing jobs to alert you about. Updating seen state...[/dim]")
+    if tasks:
+      sent_candidates, failed_count = execute_telegram_sends(tasks)
+    else:
+      logger.info("No pending job alerts to send (all evaluated jobs hard-failed).")
+      console.print("[dim]No passing jobs to alert you about. Updating seen state...[/dim]")
 
-  if not dry_run:
-    save_send_results(sent_candidates)
-  else:
-    logger.info("Dry run enabled. Skipping state file updates.")
-    console.print("\n[yellow]Dry run mode: skipped saving to local state files.[/yellow]")
+    if not dry_run:
+      save_send_results(sent_candidates)
+    else:
+      logger.info("Dry run enabled. Skipping state file updates.")
+      console.print("\n[yellow]Dry run mode: skipped saving to local state files.[/yellow]")
 
-  total_sent = len(sent_candidates)
-  logger.info(f"Pipeline finished. Sent: {total_sent} | Failed: {failed_count}")
+    total_sent = len(sent_candidates)
+    logger.info(f"Pipeline finished. Sent: {total_sent} | Failed: {failed_count}")
 
-  console.print("\n[bold]Telegram Dispatch Summary[/bold]")
-  console.print("───────────────────────────────────────")
-  console.print(f"Alerts sent       : [bold green]{total_sent}[/bold green]")
-  console.print(f"Failed deliveries : [red]{failed_count}[/red]")
-  console.print(f"Dry run mode      : [yellow]{dry_run}[/yellow]")
-  console.print("───────────────────────────────────────\n")
+    console.print("\n[bold]Telegram Dispatch Summary[/bold]")
+    console.print("───────────────────────────────────────")
+    console.print(f"Alerts sent       : [bold green]{total_sent}[/bold green]")
+    console.print(f"Failed deliveries : [red]{failed_count}[/red]")
+    console.print(f"Dry run mode      : [yellow]{dry_run}[/yellow]")
+    console.print("───────────────────────────────────────\n")
+
+    status.metrics.sent_count = total_sent
+    status.metrics.send_failed = failed_count
+
+    if complete_on_exit:
+      status.mark_completed()
+    save_status(status)
+
+  except KeyboardInterrupt:
+    status.mark_failed("Aborted by user")
+    save_status(status)
+    raise
+  except Exception as e:
+    status.mark_failed(str(e))
+    save_status(status)
+    raise

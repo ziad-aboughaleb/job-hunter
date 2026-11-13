@@ -38,9 +38,15 @@ def run_all(
   limit: LimitOpt = None,
   dry_run: DryRunOpt = False,
 ):
-  fetch.main(source_name=source, no_aggregators=no_aggregators, ignore_seen=ignore_seen, limit=limit)
-  evaluate.main(limit=limit)
-  send.main(dry_run=dry_run)
+  fetch.main(
+    source_name=source,
+    no_aggregators=no_aggregators,
+    ignore_seen=ignore_seen,
+    limit=limit,
+    complete_on_exit=False,
+  )
+  evaluate.main(limit=limit, complete_on_exit=False)
+  send.main(dry_run=dry_run, complete_on_exit=True)
 
 
 @app.command("fetch", help="Scrape and filter jobs from configured boards.")
