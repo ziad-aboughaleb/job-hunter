@@ -78,30 +78,45 @@ class EvaluatedCandidate(Candidate):
   evaluation: EvaluationResult
 
 
-class HistoryEntry(BaseModel):
-  """Compact audit record of an evaluated candidate (excludes description)."""
+class CompactEvaluation(BaseModel):
+  """A stripped-down evaluation used only for the history log."""
 
-  uid: str
+  hard_fail: bool
+  hard_fail_reason: str
+  gaps: list[str]
+  score: int
+
+
+class HistoryEntry(BaseModel):
+  """Compact audit record of an evaluated candidate (excludes description and verbose LLM text)."""
+
   recorded_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
   passed: bool
   priority: bool = False
   stack_hits: int = 0
-  source: str = ""
-  board: str = ""
   company: str
-  job_id: str = ""
   title: str
   url: str
   location: str
-  remote: bool | None = None
   posted: str = ""
-  evaluation: EvaluationResult
+  evaluation: CompactEvaluation
 
   @classmethod
   def from_evaluated(cls, candidate: EvaluatedCandidate, passed: bool) -> HistoryEntry:
-    """Factory method to strip description and convert an EvaluatedCandidate."""
-    data = candidate.model_dump(exclude={"description"})
-    return cls(**data, passed=passed)
+    """Factory method to strip out verbose and redundant data."""
+    compact_eval = CompactEvaluation(hard_fail=candidate.evaluation.hard_fail, hard_fail_reason=candidate.evaluation.hard_fail_reason, gaps=candidate.evaluation.gaps, score=candidate.evaluation.score)
+
+    return cls(
+      passed=passed,
+      priority=candidate.priority,
+      stack_hits=candidate.stack_hits,
+      company=candidate.company,
+      title=candidate.title,
+      url=candidate.url,
+      location=candidate.location,
+      posted=candidate.posted,
+      evaluation=compact_eval,
+    )
 
 
 class StageMetrics(BaseModel):
