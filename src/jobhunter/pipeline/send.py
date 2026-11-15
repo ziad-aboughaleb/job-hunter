@@ -2,7 +2,6 @@ import logging
 import time
 
 import httpx
-
 from jobhunter.core.logger import console
 from jobhunter.core.paths import DATA_PATH, read, write
 from jobhunter.core.settings import settings
@@ -220,16 +219,17 @@ def save_send_results(sent_candidates: list[EvaluatedCandidate]):
   seen_data = dict(sorted(seen_data.items(), key=lambda item: item[1], reverse=True))
   write(DATA_PATH / "seen.json", seen_data)
 
-  history_data = read(DATA_PATH / "history.json", dict)
+  history_data = read(DATA_PATH / "history.json", list)
+  history_map = {rec["uid"]: rec for rec in history_data if rec.get("uid")}
   for item in all_evaluated:
     uid = item.get("uid")
     if uid in seen_data:
       eval_cand = EvaluatedCandidate(**item)
       entry = HistoryEntry.from_evaluated(eval_cand)
-      history_data[uid] = entry.model_dump(mode="json")
-  history_data = {uid: rec for uid, rec in history_data.items() if uid in seen_data}
-  history_data = dict(sorted(history_data.items(), key=lambda item: item[1].get("recorded_at", ""), reverse=True))
-  write(DATA_PATH / "history.json", history_data)
+      history_map[uid] = entry.model_dump(mode="json")
+  history_list = [rec for uid, rec in history_map.items() if uid in seen_data]
+  history_list.sort(key=lambda item: item.get("recorded_at", ""), reverse=True)
+  write(DATA_PATH / "history.json", history_list)
 
   candidates = read(DATA_PATH / "candidates.json", list)
   filtered_candidates = [c for c in candidates if c.get("uid") not in all_evaluated_uids]

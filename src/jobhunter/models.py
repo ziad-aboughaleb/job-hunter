@@ -89,6 +89,7 @@ class CompactEvaluation(BaseModel):
 class HistoryEntry(BaseModel):
   """Compact audit record of an evaluated candidate (excludes description and verbose LLM text)."""
 
+  uid: str
   recorded_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
   priority: bool = False
   stack_hits: int = 0
@@ -102,9 +103,15 @@ class HistoryEntry(BaseModel):
   @classmethod
   def from_evaluated(cls, candidate: EvaluatedCandidate) -> HistoryEntry:
     """Factory method to strip out verbose and redundant data."""
-    compact_eval = CompactEvaluation(hard_fail=candidate.evaluation.hard_fail, hard_fail_reason=candidate.evaluation.hard_fail_reason, gaps=candidate.evaluation.gaps, score=candidate.evaluation.score)
+    compact_eval = CompactEvaluation(
+      hard_fail=candidate.evaluation.hard_fail,
+      hard_fail_reason=candidate.evaluation.hard_fail_reason,
+      gaps=candidate.evaluation.gaps,
+      score=candidate.evaluation.score,
+    )
 
     return cls(
+      uid=candidate.uid,
       priority=candidate.priority,
       stack_hits=candidate.stack_hits,
       company=candidate.company,
