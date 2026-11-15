@@ -69,7 +69,6 @@ class EvaluationResult(BaseModel):
   gaps: list[str] = Field(default_factory=list, description="Missing requirements or weak points compared to the CV.")
   score: int = Field(description="Final match score (0-100) based on the rubric.")
   score_explanation: str = Field(description="A 1-2 sentence explanation of exactly why the job passed or failed the score threshold.")
-  pitch: str = Field(default="", description="A short, one-sentence first-person pitch. Empty if score is below threshold.")
 
 
 class EvaluatedCandidate(Candidate):
@@ -91,7 +90,6 @@ class HistoryEntry(BaseModel):
   """Compact audit record of an evaluated candidate (excludes description and verbose LLM text)."""
 
   recorded_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-  passed: bool
   priority: bool = False
   stack_hits: int = 0
   company: str
@@ -102,12 +100,11 @@ class HistoryEntry(BaseModel):
   evaluation: CompactEvaluation
 
   @classmethod
-  def from_evaluated(cls, candidate: EvaluatedCandidate, passed: bool) -> HistoryEntry:
+  def from_evaluated(cls, candidate: EvaluatedCandidate) -> HistoryEntry:
     """Factory method to strip out verbose and redundant data."""
     compact_eval = CompactEvaluation(hard_fail=candidate.evaluation.hard_fail, hard_fail_reason=candidate.evaluation.hard_fail_reason, gaps=candidate.evaluation.gaps, score=candidate.evaluation.score)
 
     return cls(
-      passed=passed,
       priority=candidate.priority,
       stack_hits=candidate.stack_hits,
       company=candidate.company,
