@@ -150,10 +150,7 @@ def save_send_results(sent_candidates: list[EvaluatedCandidate]):
     uid = item.get("uid")
     if uid in seen_data:
       eval_cand = EvaluatedCandidate(**item)
-      entry = HistoryEntry.from_evaluated(
-        eval_cand,
-        passed=not eval_cand.evaluation.hard_fail,
-      )
+      entry = HistoryEntry.from_evaluated(eval_cand)
       history_data[uid] = entry.model_dump(mode="json")
   history_data = {uid: rec for uid, rec in history_data.items() if uid in seen_data}
   history_data = dict(sorted(history_data.items(), key=lambda item: item[1].get("recorded_at", ""), reverse=True))
