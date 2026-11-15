@@ -8,7 +8,7 @@ from jobhunter.core.paths import DATA_PATH, read, write
 from jobhunter.core.settings import settings
 from jobhunter.core.status import save_status, start_stage
 from jobhunter.core.textutil import clean_html
-from jobhunter.models import EvaluatedCandidate, HistoryEntry
+from jobhunter.models import EvaluatedCandidate, HistoryEntry, RunStatus
 
 logger = logging.getLogger(__name__)
 
@@ -60,11 +60,11 @@ def send_single_telegram_message(candidate: EvaluatedCandidate) -> bool:
 ▪︎ <b>Company:</b> {clean_html(candidate.company)}
 ▪︎ <b>Location:</b> {clean_html(candidate.location) or "Remote"}
 
-<b>Reasoning</b>
-<blockquote expandable>{clean_html(eval_data.reasoning)}</blockquote>
+<blockquote expandable><b>Reasoning</b>
+{clean_html(eval_data.reasoning)}</blockquote>
 
-<b>Score Breakdown</b>
-<blockquote expandable>{clean_html(eval_data.score_explanation)}</blockquote>
+<blockquote expandable><b>Score Breakdown</b>
+{clean_html(eval_data.score_explanation)}</blockquote>
 
 ↗ <a href="{candidate.url}">View Job Posting</a>
 """
@@ -89,6 +89,81 @@ def send_single_telegram_message(candidate: EvaluatedCandidate) -> bool:
     logger.exception(f"Failed to send Telegram notification for {candidate.company}: {e}")
     console.print(f"  [red]✖ Failed to send Telegram notification for {candidate.company}[/red]")
     return False
+
+
+def send_run_summary() -> None:
+  """Sends a concise pipeline summary to Telegram when notable activity or errors occur."""
+  token = settings.telegram_bot_token
+  chat_id = settings.telegram_chat_id
+  if not token or not chat_id:
+    return
+
+  raw_status = read(DATA_PATH / "status.json", dict)
+  if not raw_status:
+    return
+
+  try:
+    status = RunStatus(**raw_status)
+  except Exception as e:
+    logger.warning(f"Could not parse status.json for Telegram summary: {e}")
+    return
+
+  if status.error == "Aborted by user":
+    return
+
+  m = status.metrics
+  has_failure = status.status == "failed" or m.eval_errors > 0 or m.send_failed > 0
+  has_activity = m.new_candidates > 0 or m.sent_count > 0
+
+  if not has_failure and not has_activity:
+    logger.info("Pipeline run had no new activity or errors; skipping Telegram summary.")
+    return
+
+  end_time = status.finished_at or status.updated_at
+  duration_sec = max(0, int((end_time - status.started_at).total_seconds()))
+  duration_str = f"{duration_sec // 60}m {duration_sec % 60}s" if duration_sec >= 60 else f"{duration_sec}s"
+
+  if status.status == "failed":
+    header = f"🔴 <b>Pipeline Failed</b> · <code>{status.current_stage} · {duration_str}</code>"
+  elif has_failure:
+    header = f"🟡 <b>Pipeline Completed with Errors</b> · <code>{duration_str}</code>"
+  else:
+    header = f"🟢 <b>Pipeline Summary</b> · <code>{duration_str}</code>"
+
+  skipped_total = m.skipped_seen + m.skipped_dupes + m.skipped_filters + m.cut_over_cap
+  rejected_total = m.hard_failed + m.low_score
+
+  error_block = ""
+  if status.error:
+    error_block = f"\n▪︎ <b>Error:</b> <code>{clean_html(status.error[:200])}</code>\n"
+
+  message = f"""
+{header}
+{error_block}
+▪︎ <b>Fetched:</b> {m.new_candidates} new ({skipped_total} skipped)
+▪︎ <b>Evaluated:</b> {m.eval_passed} passed · {rejected_total} rejected
+▪︎ <b>Sent:</b> {m.sent_count} alerts
+
+<blockquote expandable><b>Full Breakdown</b>
+Total scraped: {m.fetched_total} (seen: {m.skipped_seen}, dupes: {m.skipped_dupes}, filtered: {m.skipped_filters}, cap: {m.cut_over_cap})
+Evaluated: {m.evaluated_count} (hard fails: {m.hard_failed}, low score: {m.low_score}, errors: {m.eval_errors})
+Delivery: {m.sent_count} sent, {m.send_failed} failed</blockquote>
+"""
+
+  url = f"https://api.telegram.org/bot{token}/sendMessage"
+  payload = {
+    "chat_id": chat_id,
+    "text": message.strip(),
+    "parse_mode": "HTML",
+    "disable_web_page_preview": True,
+    "disable_notification": not has_failure,
+  }
+
+  try:
+    response = httpx.post(url, json=payload, timeout=10.0)
+    response.raise_for_status()
+  except Exception as e:
+    logger.warning(f"Failed to send Telegram run summary: {e}")
 
 
 def execute_telegram_sends(tasks: list[EvaluatedCandidate]) -> tuple[list[EvaluatedCandidate], int]:

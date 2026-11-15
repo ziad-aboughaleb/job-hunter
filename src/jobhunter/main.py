@@ -38,15 +38,19 @@ def run_all(
   limit: LimitOpt = None,
   dry_run: DryRunOpt = False,
 ):
-  fetch.main(
-    source_name=source,
-    no_aggregators=no_aggregators,
-    ignore_seen=ignore_seen,
-    limit=limit,
-    complete_on_exit=False,
-  )
-  evaluate.main(limit=limit, complete_on_exit=False)
-  send.main(dry_run=dry_run, complete_on_exit=True)
+  try:
+    fetch.main(
+      source_name=source,
+      no_aggregators=no_aggregators,
+      ignore_seen=ignore_seen,
+      limit=limit,
+      complete_on_exit=False,
+    )
+    evaluate.main(limit=limit, complete_on_exit=False)
+    send.main(dry_run=dry_run, complete_on_exit=True)
+  finally:
+    if not dry_run:
+      send.send_run_summary()
 
 
 @app.command("fetch", help="Scrape and filter jobs from configured boards.")
@@ -69,7 +73,11 @@ def evaluate_jobs(
 
 @app.command("send", help="Dispatch passing job evaluations to Telegram.")
 def send_jobs(dry_run: DryRunOpt = False):
-  send.main(dry_run=dry_run)
+  try:
+    send.main(dry_run=dry_run)
+  finally:
+    if not dry_run:
+      send.send_run_summary()
 
 
 @app.command("discover", help="Discover and validate new company boards via search engines.")
