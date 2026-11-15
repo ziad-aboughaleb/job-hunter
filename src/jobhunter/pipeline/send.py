@@ -43,30 +43,30 @@ def send_single_telegram_message(candidate: EvaluatedCandidate) -> bool:
   chat_id = settings.telegram_chat_id
   eval_data = candidate.evaluation
 
-  priority_badge = "⭐ <b>[VIP COMPANY]</b> " if candidate.priority else ""
+  priority_badge = "✦ <b>VIP</b> · " if candidate.priority else ""
 
   score_threshold = settings.evaluating.score_threshold
   if eval_data.score >= 80:
-    score_emoji = "🟢"
+    score_dot = "🟢"
   elif eval_data.score >= score_threshold:
-    score_emoji = "🟡"
+    score_dot = "🟡"
   else:
-    score_emoji = "🟠"
-
-  pitch_section = f"\n💡 <b>Pitch:</b>\n{clean_html(eval_data.pitch)}\n" if eval_data.pitch else ""
+    score_dot = "🟠"
 
   message = f"""
-🎯 <b>New Job Match!</b>
-{priority_badge}({score_emoji} Score: <code>{eval_data.score}/100</code>)
+<b>{clean_html(candidate.title)}</b>
+{priority_badge}{score_dot} <code>{eval_data.score}/100</code>
 
-🏢 <b>Company:</b> {clean_html(candidate.company)}
-💼 <b>Title:</b> {clean_html(candidate.title)}
-📍 <b>Location:</b> {clean_html(candidate.location) or "Remote"}
+▪︎ <b>Company:</b> {clean_html(candidate.company)}
+▪︎ <b>Location:</b> {clean_html(candidate.location) or "Remote"}
 
-🔍 <b>Reasoning:</b>\n{clean_html(eval_data.reasoning)}
-📈 <b>Score Breakdown:</b>\n{clean_html(eval_data.score_explanation)}
-{pitch_section}
-🔗 <a href="{candidate.url}">View Job Posting</a>
+<b>Reasoning</b>
+<blockquote expandable>{clean_html(eval_data.reasoning)}</blockquote>
+
+<b>Score Breakdown</b>
+<blockquote expandable>{clean_html(eval_data.score_explanation)}</blockquote>
+
+↗ <a href="{candidate.url}">View Job Posting</a>
 """
 
   url = f"https://api.telegram.org/bot{token}/sendMessage"
