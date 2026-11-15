@@ -2,6 +2,7 @@ import logging
 import time
 
 import httpx
+
 from jobhunter.core.logger import console
 from jobhunter.core.paths import DATA_PATH, read, write
 from jobhunter.core.settings import settings
@@ -10,6 +11,33 @@ from jobhunter.core.textutil import clean_html
 from jobhunter.models import EvaluatedCandidate, HistoryEntry, RunStatus
 
 logger = logging.getLogger(__name__)
+
+
+def _post_telegram(text: str, silent: bool = False) -> bool:
+  token, chat_id = settings.telegram_bot_token, settings.telegram_chat_id
+  if not token or not chat_id:
+    logger.error("Telegram token or chat ID is missing in settings.")
+    return False
+
+  try:
+    response = httpx.post(
+      f"https://api.telegram.org/bot{token}/sendMessage",
+      json={
+        "chat_id": chat_id,
+        "text": text.strip(),
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True,
+        "disable_notification": silent,
+      },
+      timeout=10.0,
+    )
+    response.raise_for_status()
+    return True
+  except httpx.HTTPStatusError as e:
+    logger.exception(f"Telegram API Error ({e.response.status_code}): {e.response.text}")
+  except Exception as e:
+    logger.exception(f"Telegram request failed: {e}")
+  return False
 
 
 def build_send_tasks() -> list[EvaluatedCandidate]:
@@ -38,8 +66,6 @@ def build_send_tasks() -> list[EvaluatedCandidate]:
 
 
 def send_single_telegram_message(candidate: EvaluatedCandidate) -> bool:
-  token = settings.telegram_bot_token
-  chat_id = settings.telegram_chat_id
   eval_data = candidate.evaluation
 
   priority_badge = "✦ <b>VIP</b> · " if candidate.priority else ""
@@ -68,35 +94,11 @@ def send_single_telegram_message(candidate: EvaluatedCandidate) -> bool:
 ↗ <a href="{candidate.url}">View Job Posting</a>
 """
 
-  url = f"https://api.telegram.org/bot{token}/sendMessage"
-  payload = {
-    "chat_id": chat_id,
-    "text": message,
-    "parse_mode": "HTML",
-    "disable_web_page_preview": True,
-  }
-
-  try:
-    response = httpx.post(url, json=payload, timeout=10.0)
-    response.raise_for_status()
-    return True
-  except httpx.HTTPStatusError as e:
-    logger.exception(f"Telegram API Error ({e.response.status_code}) for {candidate.company}: {e.response.text}")
-    console.print(f"  [red]✖ Telegram API Error: {e.response.status_code}[/red]")
-    return False
-  except Exception as e:
-    logger.exception(f"Failed to send Telegram notification for {candidate.company}: {e}")
-    console.print(f"  [red]✖ Failed to send Telegram notification for {candidate.company}[/red]")
-    return False
+  return _post_telegram(message)
 
 
 def send_run_summary() -> None:
   """Sends a concise pipeline summary to Telegram when notable activity or errors occur."""
-  token = settings.telegram_bot_token
-  chat_id = settings.telegram_chat_id
-  if not token or not chat_id:
-    return
-
   raw_status = read(DATA_PATH / "status.json", dict)
   if not raw_status:
     return
@@ -149,20 +151,7 @@ Evaluated: {m.evaluated_count} (hard fails: {m.hard_failed}, low score: {m.low_s
 Delivery: {m.sent_count} sent, {m.send_failed} failed</blockquote>
 """
 
-  url = f"https://api.telegram.org/bot{token}/sendMessage"
-  payload = {
-    "chat_id": chat_id,
-    "text": message.strip(),
-    "parse_mode": "HTML",
-    "disable_web_page_preview": True,
-    "disable_notification": not has_failure,
-  }
-
-  try:
-    response = httpx.post(url, json=payload, timeout=10.0)
-    response.raise_for_status()
-  except Exception as e:
-    logger.warning(f"Failed to send Telegram run summary: {e}")
+  _post_telegram(message, silent=not has_failure)
 
 
 def execute_telegram_sends(tasks: list[EvaluatedCandidate]) -> tuple[list[EvaluatedCandidate], int]:
@@ -214,22 +203,14 @@ def save_send_results(sent_candidates: list[EvaluatedCandidate]):
   seen_data = read(DATA_PATH / "seen.json", dict)
   for uid in all_evaluated_uids:
     seen_data[uid] = current_time
-  retention_cutoff = current_time - (settings.limits.seen_retention_days * 86400)
-  seen_data = {uid: ts for uid, ts in seen_data.items() if ts > retention_cutoff}
-  seen_data = dict(sorted(seen_data.items(), key=lambda item: item[1], reverse=True))
+  cutoff = current_time - (settings.limits.seen_retention_days * 86400)
+  seen_data = dict(sorted(((u, ts) for u, ts in seen_data.items() if ts > cutoff), key=lambda x: x[1], reverse=True))
   write(DATA_PATH / "seen.json", seen_data)
 
   history_data = read(DATA_PATH / "history.json", list)
-  history_map = {rec["uid"]: rec for rec in history_data if rec.get("uid")}
-  for item in all_evaluated:
-    uid = item.get("uid")
-    if uid in seen_data:
-      eval_cand = EvaluatedCandidate(**item)
-      entry = HistoryEntry.from_evaluated(eval_cand)
-      history_map[uid] = entry.model_dump(mode="json")
-  history_list = [rec for uid, rec in history_map.items() if uid in seen_data]
-  history_list.sort(key=lambda item: item.get("recorded_at", ""), reverse=True)
-  write(DATA_PATH / "history.json", history_list)
+  new_entries = [HistoryEntry.from_evaluated(EvaluatedCandidate(**item)).model_dump(mode="json") for item in all_evaluated if item.get("uid") in seen_data]
+  existing = [rec for rec in history_data if rec.get("uid") in seen_data and rec.get("uid") not in all_evaluated_uids]
+  write(DATA_PATH / "history.json", new_entries + existing)
 
   candidates = read(DATA_PATH / "candidates.json", list)
   filtered_candidates = [c for c in candidates if c.get("uid") not in all_evaluated_uids]
