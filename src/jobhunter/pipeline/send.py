@@ -99,7 +99,7 @@ def send_single_telegram_message(candidate: EvaluatedCandidate) -> bool:
 
 def send_run_summary() -> None:
   """Sends a concise pipeline summary to Telegram when notable activity or errors occur."""
-  raw_status = read(DATA_PATH / "status.json", dict)
+  raw_status = read(DATA_PATH / "runstatus.json", dict)
   if not raw_status:
     return
 
@@ -134,9 +134,7 @@ def send_run_summary() -> None:
   skipped_total = m.skipped_seen + m.skipped_dupes + m.skipped_filters + m.cut_over_cap
   rejected_total = m.hard_failed + m.low_score
 
-  error_block = ""
-  if status.error:
-    error_block = f"\n▪︎ <b>Error:</b> <code>{clean_html(status.error[:200])}</code>\n"
+  error_block = f"\n▪︎ <b>Error:</b> <code>{clean_html(status.error[:200])}</code>\n" if status.error else ""
 
   message = f"""
 {header}
