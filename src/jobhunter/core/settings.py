@@ -2,18 +2,22 @@ import json
 import os
 from typing import Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.aliases import AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .paths import CONFIG_PATH, read
 
 
-class ProfileConfig(BaseModel):
+class StrictModel(BaseModel):
+  model_config = ConfigDict(extra="forbid")
+
+
+class ProfileConfig(StrictModel):
   target_roles: str = ""
 
 
-class FiltersConfig(BaseModel):
+class FiltersConfig(StrictModel):
   title_include: list[str] = []
   title_exclude: list[str] = []
   stack_keywords: list[str] = []
@@ -28,31 +32,33 @@ class FiltersConfig(BaseModel):
   max_age_days: int = 14
 
 
-class LimitsConfig(BaseModel):
+class LimitsConfig(StrictModel):
   max_candidates_per_run: int = 30
   description_max_chars: int = 7000
   seen_retention_days: int = 90
   fetch_timeout: int = Field(default=60, ge=1)
 
 
-class ScoringWeight(BaseModel):
+class ScoringWeight(StrictModel):
   name: str
-  weight: int
+  weight: int = Field(ge=1, le=100)
   what: str
 
 
-class EvaluatingConfig(BaseModel):
+class EvaluatingConfig(StrictModel):
   score_threshold: int = Field(default=65, ge=25, le=89)
   low_band: int = 45
   scoring_weights: list[ScoringWeight] = Field(default_factory=list)
 
   @model_validator(mode="after")
   def calculate_low_band(self) -> EvaluatingConfig:
+    if self.scoring_weights and sum(w.weight for w in self.scoring_weights) != 100:
+      raise ValueError("scoring_weights must sum to 100")
     self.low_band = max(0, self.score_threshold - 20)
     return self
 
 
-class LLMConfig(BaseModel):
+class LLMConfig(StrictModel):
   base_url: str | None = None
   model: str | None = None
   request_delay: int = 5
@@ -60,14 +66,14 @@ class LLMConfig(BaseModel):
   timeout: int = 600
 
 
-class TelegramConfig(BaseModel):
+class TelegramConfig(StrictModel):
   link_preview: bool = False
   notify_on_empty: bool = True
   send_low_scores: bool = False
   message_delay: float = Field(default=1.0, ge=0.0)
 
 
-class WorkersConfig(BaseModel):
+class WorkersConfig(StrictModel):
   fetch_workers: int = Field(default=8, ge=1, le=20)
   evaluation_workers: int = Field(default=1, ge=1, le=20)
   discovery_workers: int = Field(default=8, ge=1, le=10)
@@ -102,14 +108,16 @@ def load_settings() -> Settings:
   if config_path.exists():
     config_data = read(config_path, dict)
   else:
-    config_str = os.getenv("CONFIG_JSON")
-    if config_str:
+    config_str = (os.getenv("CONFIG_JSON") or "").strip()
+    if not config_str:
+      config_data = {}
+    else:
       try:
         config_data = json.loads(config_str)
-      except Exception:
-        config_data = {}
-    else:
-      config_data = {}
+      except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in CONFIG_JSON environment variable: {e}") from e
+      if not isinstance(config_data, dict):
+        raise ValueError("CONFIG_JSON must be a JSON object")
 
   # Remove "_help"
   config_data.pop("_help", None)

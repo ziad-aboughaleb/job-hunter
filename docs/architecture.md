@@ -18,6 +18,7 @@ src/jobhunter/
 │   ├── logger.py       # Rich console and logging configuration
 │   ├── paths.py        # Atomic file I/O, path resolution, and file locking
 │   ├── settings.py     # Pydantic Settings & configuration loading
+│   ├── status.py       # Pipeline execution status and run metrics tracking
 │   └── textutil.py     # HTML cleaning and date parsing utilities
 ├── pipeline/
 │   ├── evaluate.py     # Stage 4: AI evaluation via OpenAI/LLM API
@@ -52,7 +53,7 @@ src/jobhunter/
 
 - **Task Loading & Filtering**: Reads `data/candidates.json` and `data/evaluated.json`, isolating pending candidates not yet evaluated. Supports evaluating specific candidates via `--job <UID>` or overriding run candidate limits via `--limit <INT>`.
 - **Structured LLM Calls & Resilient Retries**: Submits each candidate along with the compiled system prompt to the OpenAI-compatible LLM client (`response_format={"type": "json_object"}`). Features automatic exponential backoff retries on transient network errors, rate limits (`RateLimitError`, 429), and server errors (`APIStatusError`, 5xx).
-- **Validation & Fallback Parsing**: Parses and validates LLM responses against the `EvaluationResult` Pydantic model, with built-in markdown block cleanup (`json ... `) and fallback parsing. On schema validation failure, logs offending raw JSON for easy debugging.
+- **Validation & Fallback Parsing**: Parses and validates LLM responses against the `EvaluationResult` Pydantic model, with built-in markdown block cleanup (`json ... `) and fallback parsing. Enforces score bounds (0-100) and model validator guardrails (if `hard_fail` is True, score is normalized to 0 and strengths cleared; if False, hard_fail_reason is cleared). On schema validation failure, logs offending raw JSON for easy debugging.
 - **Concurrency & Persistence**: Executes evaluation tasks across `settings.workers.evaluation_workers`, sorts successfully evaluated candidates by match score descending, and atomically persists them to `data/evaluated.json`.
 
 ### 3. Telegram Dispatch & State Management (`send.py`)

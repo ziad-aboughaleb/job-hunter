@@ -84,7 +84,8 @@ The `config/config.json` file controls search targets, filtering rules, scoring 
   "limits": {
     "max_candidates_per_run": 30,
     "description_max_chars": 7000,
-    "seen_retention_days": 90
+    "seen_retention_days": 90,
+    "fetch_timeout": 60
   },
   "evaluating": {
     "score_threshold": 65,
@@ -107,7 +108,6 @@ The `config/config.json` file controls search targets, filtering rules, scoring 
     ]
   },
   "llm": {
-    "provider": "openai",
     "base_url": "https://api.openai.com/v1",
     "model": "gpt-4o-mini",
     "request_delay": 5,
@@ -117,7 +117,8 @@ The `config/config.json` file controls search targets, filtering rules, scoring 
   "telegram": {
     "link_preview": false,
     "notify_on_empty": true,
-    "send_low_scores": false
+    "send_low_scores": false,
+    "message_delay": 1.0
   },
   "workers": {
     "fetch_workers": 8,
@@ -144,13 +145,15 @@ The `config/config.json` file controls search targets, filtering rules, scoring 
   - `max_candidates_per_run`: Maximum non-priority candidates evaluated per run.
   - `description_max_chars`: Truncation limit for job descriptions (default 7,000 chars).
   - `seen_retention_days`: Rolling retention period for `seen.json` (default 90 days).
+  - `fetch_timeout`: HTTP fetch request timeout in seconds (default 60s).
 - **`evaluating`**:
   - `score_threshold`: Minimum score required to pass evaluation (default 65).
-  - `scoring_weights`: Criteria and weights used by the LLM for scoring.
+  - `scoring_weights`: Criteria and weights used by the LLM for scoring (each weight must be between 1 and 100, and the total sum of all weights must equal 100).
 - **`llm`**:
-  - Configures the AI provider, custom `base_url` (supporting local Ollama/vLLM endpoints), `model`, request delay, temperature (default 0.0), and timeout.
-- **`telegram`**: Controls link previews, empty notifications, and whether to send alerts for jobs that fall below the score threshold but didn't hard-fail (`send_low_scores`).
-- **`workers`**: Concurrency worker counts for fetching, evaluation, discovery, and pruning.
+  - Configures the custom `base_url` (supporting OpenAI and local Ollama/vLLM endpoints), `model`, request delay, temperature (default 0.0), and timeout.
+- **`telegram`**: Controls link previews, empty notifications, whether to send alerts for jobs that fall below the score threshold (`send_low_scores`), and message dispatch delay (`message_delay`).
+
+> **🔒 Strict Configuration Validation:** All configuration sections enforce strict Pydantic validation (`extra="forbid"`). Any unrecognized or misspelled keys in `config.json` will raise validation errors on startup. Additionally, when using the `CONFIG_JSON` environment variable fallback, `JobHunter` validates that the payload is a well-formed JSON object.
 
 ---
 
