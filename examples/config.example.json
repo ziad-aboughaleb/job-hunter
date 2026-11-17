@@ -53,7 +53,8 @@
   "limits": {
     "max_candidates_per_run": 30,
     "description_max_chars": 7000,
-    "seen_retention_days": 90
+    "seen_retention_days": 90,
+    "fetch_timeout": 60
   },
   "evaluating": {
     "score_threshold": 65,
@@ -76,7 +77,6 @@
     ]
   },
   "llm": {
-    "provider": "openai",
     "base_url": "https://api.openai.com/v1",
     "model": "gpt-4o-mini",
     "request_delay": 5,
@@ -86,7 +86,8 @@
   "telegram": {
     "link_preview": false,
     "notify_on_empty": true,
-    "send_low_scores": false
+    "send_low_scores": false,
+    "message_delay": 1.0
   },
   "workers": {
     "fetch_workers": 8,

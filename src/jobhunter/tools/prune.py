@@ -48,7 +48,7 @@ def validate_source_slugs(source: Any, slugs: list[str]) -> tuple[list[str], int
   logger.info(f"Starting prune check for source: {source.name}")
   console.print(f"\n[cyan]Checking [bold]{source.name}[/bold] boards ({len(slugs)} slugs)...[/cyan]")
 
-  workers = max(1, min(settings.workers.pruning_workers, 20))
+  workers = settings.workers.pruning_workers
   with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
     results = executor.map(source.validate_slug, slugs)
 

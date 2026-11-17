@@ -32,6 +32,7 @@ class LimitsConfig(BaseModel):
   max_candidates_per_run: int = 30
   description_max_chars: int = 7000
   seen_retention_days: int = 90
+  fetch_timeout: int = Field(default=60, ge=1)
 
 
 class ScoringWeight(BaseModel):
@@ -52,7 +53,6 @@ class EvaluatingConfig(BaseModel):
 
 
 class LLMConfig(BaseModel):
-  provider: str = "openai"
   base_url: str | None = None
   model: str | None = None
   request_delay: int = 5
@@ -64,13 +64,14 @@ class TelegramConfig(BaseModel):
   link_preview: bool = False
   notify_on_empty: bool = True
   send_low_scores: bool = False
+  message_delay: float = Field(default=1.0, ge=0.0)
 
 
 class WorkersConfig(BaseModel):
-  fetch_workers: int = 8
-  evaluation_workers: int = 1
-  discovery_workers: int = 8
-  pruning_workers: int = 8
+  fetch_workers: int = Field(default=8, ge=1, le=20)
+  evaluation_workers: int = Field(default=1, ge=1, le=20)
+  discovery_workers: int = Field(default=8, ge=1, le=10)
+  pruning_workers: int = Field(default=8, ge=1, le=20)
 
 
 class Settings(BaseSettings):

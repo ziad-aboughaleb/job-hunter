@@ -163,7 +163,7 @@ def evaluate_search_results(
 
   added_count = 0
 
-  workers = max(1, min(settings.workers.discovery_workers, 10))
+  workers = settings.workers.discovery_workers
   with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
     results_map = executor.map(source.validate_slug, candidate_slugs)
 

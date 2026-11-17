@@ -143,7 +143,7 @@ def execute_evaluation_tasks(client: OpenAI, tasks: list[Candidate]) -> list[tup
   system_prompt = build_system_prompt()
   target_total = len(tasks)
 
-  workers = max(1, min(settings.workers.evaluation_workers, 20))
+  workers = settings.workers.evaluation_workers
 
   logger.info(f"Executing evaluation tasks across {target_total} targets with {workers} workers.")
   console.print(f"[bold cyan]Evaluating {target_total} jobs with AI...[/bold cyan]")

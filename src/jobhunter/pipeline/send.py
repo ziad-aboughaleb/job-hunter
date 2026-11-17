@@ -34,7 +34,7 @@ def _post_telegram(text: str, silent: bool = False) -> bool:
         "chat_id": chat_id,
         "text": text.strip(),
         "parse_mode": "HTML",
-        "disable_web_page_preview": True,
+        "disable_web_page_preview": not settings.telegram.link_preview,
         "disable_notification": silent,
       },
       timeout=10.0,
@@ -104,7 +104,7 @@ def send_single_telegram_message(candidate: EvaluatedCandidate) -> bool:
 
 
 def send_run_summary() -> None:
-  """Sends a concise pipeline summary to Telegram when notable activity or errors occur."""
+  """Sends a concise pipeline summary to Telegram when notable activity, errors, or notify_on_empty is enabled."""
   raw_status = read(DATA_PATH / "runstatus.json", dict)
   if not raw_status:
     return
@@ -120,9 +120,9 @@ def send_run_summary() -> None:
 
   m = status.metrics
   has_failure = status.status == "failed" or m.eval_errors > 0 or m.send_failed > 0
-  has_activity = m.new_candidates > 0 or m.sent_count > 0
+  has_activity = m.sent_count > 0
 
-  if not has_failure and not has_activity:
+  if not has_failure and not has_activity and not settings.telegram.notify_on_empty:
     logger.info("Pipeline run had no new activity or errors; skipping Telegram summary.")
     return
 
@@ -184,7 +184,8 @@ def execute_telegram_sends(tasks: list[EvaluatedCandidate]) -> tuple[list[Evalua
       failed_count += 1
       console.print(f"  [red]✖ Failed to send alert for {candidate.company}[/red]")
 
-    time.sleep(1)
+    if settings.telegram.message_delay > 0:
+      time.sleep(settings.telegram.message_delay)
 
   logger.info(f"Telegram dispatch complete. Successfully sent: {len(sent_candidates)}, Failed: {failed_count}")
 

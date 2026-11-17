@@ -43,7 +43,7 @@ def execute_fetch_tasks(tasks: list[tuple]) -> list[Job]:
   fetched_jobs: list[Job] = []
   target_total = len(tasks)
 
-  workers = max(1, min(settings.workers.fetch_workers, 20))
+  workers = settings.workers.fetch_workers
 
   logger.info(f"Executing fetch tasks across {target_total} targets with {workers} workers.")
   console.print("[bold cyan]Fetching jobs from configured sources...[/bold cyan]")
@@ -70,7 +70,7 @@ def execute_fetch_tasks(tasks: list[tuple]) -> list[Job]:
         name = future_to_name[future]
 
         try:
-          result = future.result(timeout=60)
+          result = future.result(timeout=settings.limits.fetch_timeout)
           if result:
             fetched_jobs.extend(result)
 
