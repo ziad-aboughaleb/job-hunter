@@ -88,22 +88,34 @@ The `config/config.json` file controls search targets, filtering rules, scoring 
     "fetch_timeout": 60
   },
   "evaluating": {
-    "score_threshold": 65,
+    "score_threshold": 75,
+    "hard_gates": [
+      "The posting restricts applicants to a country, region, or time zone outside the candidate's preferences (check both location metadata and description).",
+      "The work arrangement (remote, hybrid, on-site) or contract type violates the candidate's preferences.",
+      "The seniority level exceeds the candidate's preferences (a 1-2 year stretch is acceptable only when the core tech stack matches closely).",
+      "The primary focus of the role does not align with {target_roles}.",
+      "The job description explicitly mentions a dealbreaker or non-accepted working language listed in the preferences."
+    ],
     "scoring_weights": [
       {
-        "name": "tech_stack_match",
-        "weight": 40,
-        "what": "How well the job's tech stack matches the candidate's CV."
+        "name": "Core skills overlap",
+        "weight": 50,
+        "what": "Direct overlap between required core technologies and skills demonstrated in the CV; do not award high marks for shared secondary tools if the primary stack is mismatched."
       },
       {
-        "name": "experience_level",
-        "weight": 30,
-        "what": "Does the required experience match the candidate's years of experience?"
+        "name": "Experience and seniority fit",
+        "weight": 20,
+        "what": "Alignment of required years of experience and career stage with the CV and preferences."
       },
       {
-        "name": "role_alignment",
-        "weight": 30,
-        "what": "Is this a backend-focused engineering role?"
+        "name": "Role and domain fit",
+        "weight": 20,
+        "what": "Title alignment with target backend/software roles and relevance of CV projects to the role's problem space."
+      },
+      {
+        "name": "Nice-to-haves",
+        "weight": 10,
+        "what": "Secondary tools, cloud/CI workflows, testing experience, and soft skills."
       }
     ]
   },
@@ -147,7 +159,8 @@ The `config/config.json` file controls search targets, filtering rules, scoring 
   - `seen_retention_days`: Rolling retention period for `seen.json` (default 90 days).
   - `fetch_timeout`: HTTP fetch request timeout in seconds (default 60s).
 - **`evaluating`**:
-  - `score_threshold`: Minimum score required to pass evaluation (default 65).
+  - `score_threshold`: Minimum score required to pass evaluation (default 75).
+  - `hard_gates`: List of strict exclusion rules evaluated by the AI.
   - `scoring_weights`: Criteria and weights used by the LLM for scoring (each weight must be between 1 and 100, and the total sum of all weights must equal 100).
 - **`llm`**:
   - Configures the custom `base_url` (supporting OpenAI and local Ollama/vLLM endpoints), `model`, request delay, temperature (default 0.0), and timeout.
