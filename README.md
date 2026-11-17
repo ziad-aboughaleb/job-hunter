@@ -12,7 +12,7 @@
 - **ATS WAF & API Bypass**: Bypasses heavy frontend anti-bot walls by querying official public underlying JSON/XML board APIs directly (Greenhouse, Lever, Personio, Workable, Recruitee, Ashby, plus aggregators like Remotive, RemoteOK, and Arbeitnow).
 - **Multi-Stage Filtering**: Filters jobs through regex word-boundary matching for titles, excluded companies, location rules, remote requirements, posting age, and minimum tech stack keyword hits (`stack_hits`).
 - **AI-Driven Evaluation**: Evaluates shortlisted candidates against your exact CV (`config/cv.md`) and preferences (`config/preferences.md`) using OpenAI-compatible LLMs, enforcing hard gates, scoring rubrics, and anti-hallucination guardrails.
-- **Telegram Rich Alerts**: Dispatches beautifully formatted HTML notifications featuring VIP priority badges, score color-coding, AI reasoning, score breakdowns, professional pitches, and direct links.
+- **Telegram Rich Alerts**: Dispatches beautifully formatted HTML notifications featuring VIP priority badges, score color-coding, AI reasoning, score breakdowns, and direct links.
 - **Autonomous Maintenance Tools**: Includes built-in CLI commands to automatically discover new company career boards via DuckDuckGo and prune dead or broken board URLs.
 - **Zero-Database State Management**: Uses atomic file writes with file locking (`filelock`) and a rolling 90-day retention cache (`seen.json`) to prevent duplicate processing without requiring an external database.
 

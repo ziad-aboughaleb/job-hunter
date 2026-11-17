@@ -57,7 +57,7 @@ src/jobhunter/
 
 ### 3. Telegram Dispatch & State Management (`send.py`)
 
-- **Dispatch**: Loads evaluated candidates from `evaluated.json` where `evaluation.hard_fail` is `False`. Formats rich HTML messages (including priority badges, score emojis, reasoning, score explanation, pitch, and job URL) and sends them to Telegram via `httpx` with 1-second request pacing.
+- **Dispatch**: Loads evaluated candidates from `evaluated.json` where `evaluation.hard_fail` is `False`. Formats rich HTML messages (including priority badges, score emojis, reasoning, score explanation, and job URL) and sends them to Telegram via `httpx` with 1-second request pacing.
 - **State Lifecycle & Pruning**: Upon successful processing:
   1. Records all evaluated job UIDs into `data/seen.json` mapped to their current Unix timestamp (`int(time.time())`).
   2. Executes a **90-day retention prune** on `seen.json`, discarding any entry older than `settings.limits.seen_retention_days * 86400` seconds to prevent file bloat.
@@ -91,12 +91,16 @@ src/jobhunter/
 `JobHunter` maintains state entirely in flat JSON files within the `data/` directory, protected against race conditions and concurrent execution anomalies:
 
 ```
-[candidates.json] ──(Evaluated)──> [evaluated.json] ──(Sent & Synced)──> [seen.json (90-day retention)]
+[candidates.json] ──(Evaluated)──> [evaluated.json] ──(Sent & Synced)──> [seen.json / history.json]
+                                         │
+                                         └──(Pipeline State)──> [runstatus.json]
 ```
 
 - **`data/candidates.json`**: Active pool of filtered, un-evaluated candidates waiting for AI scoring.
-- **data/evaluated.json**: Storage for candidates that have undergone AI evaluation.
-- **data/seen.json**: Persistent dictionary mapping job unique identifiers (`uid`) to their discovery/processing timestamp (`{uid: timestamp}`). Prevents re-scraping or re-evaluating the same job across runs, bounded by a 90-day rolling window.
+- **`data/evaluated.json`**: Storage for candidates that have undergone AI evaluation.
+- **`data/seen.json`**: Persistent dictionary mapping job unique identifiers (`uid`) to their discovery/processing timestamp (`{uid: timestamp}`). Prevents re-scraping or re-evaluating the same job across runs, bounded by a 90-day rolling window.
+- **`data/history.json`**: A permanent, compact audit log of all evaluated candidates (stripped of verbose descriptions and LLM reasoning).
+- **`data/runstatus.json`**: Real-time tracking of the current pipeline execution, including stage metrics (fetched, filtered, evaluated, sent) and error logs.
 - **Concurrency & Atomic Safety (`paths.py`)**: All write operations utilize `filelock.FileLock` (using lockfiles stored in `.locks/`) combined with atomic replacement (`tempfile.mkstemp` + `os.replace` + `os.fsync`/`fdatasync`), ensuring zero file corruption even under high concurrency or abrupt termination.
 
 ---

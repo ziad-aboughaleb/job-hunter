@@ -116,7 +116,8 @@ The `config/config.json` file controls search targets, filtering rules, scoring 
   },
   "telegram": {
     "link_preview": false,
-    "notify_on_empty": true
+    "notify_on_empty": true,
+    "send_low_scores": false
   },
   "workers": {
     "fetch_workers": 8,
@@ -148,7 +149,7 @@ The `config/config.json` file controls search targets, filtering rules, scoring 
   - `scoring_weights`: Criteria and weights used by the LLM for scoring.
 - **`llm`**:
   - Configures the AI provider, custom `base_url` (supporting local Ollama/vLLM endpoints), `model`, request delay, temperature (default 0.0), and timeout.
-- **`telegram`**: Controls link previews and empty notifications.
+- **`telegram`**: Controls link previews, empty notifications, and whether to send alerts for jobs that fall below the score threshold but didn't hard-fail (`send_low_scores`).
 - **`workers`**: Concurrency worker counts for fetching, evaluation, discovery, and pruning.
 
 ---
@@ -162,7 +163,7 @@ The `config/config.json` file controls search targets, filtering rules, scoring 
 - **Untrusted Data Isolation**: Job postings are wrapped in explicit XML tags and treated strictly as data. The system prompt explicitly instructs the LLM never to follow instructions contained within job postings.
 - **Strict Evidence Rule**: The LLM is prohibited from hallucinating skills, employers, numbers, or years of experience. A strength can _only_ be cited if the job posting explicitly requests it _and_ the CV explicitly demonstrates it.
 - **Seniority & Gap Enforcement**: Minor seniority mismatches (1-2 years) are permissible if core skills match, but major gaps trigger hard failures or score penalties. Missing required skills _must_ be explicitly listed under gaps.
-- **Structured JSON Output**: Enforces exact adherence to the `EvaluationResult` Pydantic model (reasoning, hard fails, strengths, gaps, score, score explanation, and one-sentence professional pitch).
+- **Structured JSON Output**: Enforces exact adherence to the `EvaluationResult` Pydantic model (reasoning, hard fails, strengths, gaps, score, and score explanation).
 
 ---
 
