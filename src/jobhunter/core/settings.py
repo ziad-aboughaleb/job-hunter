@@ -89,10 +89,10 @@ class Settings(BaseSettings):
   boards: dict[str, Any] = Field(default_factory=dict)
   companies: dict[str, list[str]] = Field(default_factory=dict)
   filters: FiltersConfig = Field(default_factory=FiltersConfig)
-  limits: LimitsConfig = Field(default_factory=LimitsConfig)
   evaluating: EvaluatingConfig = Field(default_factory=EvaluatingConfig)
   llm: LLMConfig = Field(default_factory=LLMConfig)
   telegram: TelegramConfig = Field(default_factory=TelegramConfig)
+  limits: LimitsConfig = Field(default_factory=LimitsConfig)
   workers: WorkersConfig = Field(default_factory=WorkersConfig)
 
   cv_text: str = ""
