@@ -85,7 +85,8 @@
   },
   "telegram": {
     "link_preview": false,
-    "notify_on_empty": true
+    "notify_on_empty": true,
+    "send_low_scores": false
   },
   "workers": {
     "fetch_workers": 8,

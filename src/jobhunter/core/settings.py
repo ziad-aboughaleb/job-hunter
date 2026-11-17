@@ -2,7 +2,7 @@ import json
 import os
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from pydantic.aliases import AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -41,8 +41,14 @@ class ScoringWeight(BaseModel):
 
 
 class EvaluatingConfig(BaseModel):
-  score_threshold: int = 65
+  score_threshold: int = Field(default=65, ge=25, le=89)
+  low_band: int = 45
   scoring_weights: list[ScoringWeight] = Field(default_factory=list)
+
+  @model_validator(mode="after")
+  def calculate_low_band(self) -> EvaluatingConfig:
+    self.low_band = max(0, self.score_threshold - 20)
+    return self
 
 
 class LLMConfig(BaseModel):
@@ -57,11 +63,12 @@ class LLMConfig(BaseModel):
 class TelegramConfig(BaseModel):
   link_preview: bool = False
   notify_on_empty: bool = True
+  send_low_scores: bool = False
 
 
 class WorkersConfig(BaseModel):
-  evaluation_workers: int = 1
   fetch_workers: int = 8
+  evaluation_workers: int = 1
   discovery_workers: int = 8
   pruning_workers: int = 8
 

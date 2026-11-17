@@ -13,6 +13,14 @@ from jobhunter.models import EvaluatedCandidate, HistoryEntry, RunStatus
 logger = logging.getLogger(__name__)
 
 
+def _is_sendable(evaluation: dict) -> bool:
+  if evaluation.get("hard_fail", True):
+    return False
+  if settings.telegram.send_low_scores:
+    return True
+  return evaluation.get("score", 0) >= settings.evaluating.score_threshold
+
+
 def _post_telegram(text: str, silent: bool = False) -> bool:
   token, chat_id = settings.telegram_bot_token, settings.telegram_chat_id
   if not token or not chat_id:
@@ -49,10 +57,7 @@ def build_send_tasks() -> list[EvaluatedCandidate]:
   tasks = []
   for item in raw_evals:
     try:
-      evaluation = item.get("evaluation", {})
-      hard_fail = evaluation.get("hard_fail", True)
-
-      if not hard_fail:
+      if _is_sendable(item.get("evaluation", {})):
         eval_candidate = EvaluatedCandidate(**item)
         tasks.append(eval_candidate)
 
@@ -68,12 +73,13 @@ def build_send_tasks() -> list[EvaluatedCandidate]:
 def send_single_telegram_message(candidate: EvaluatedCandidate) -> bool:
   eval_data = candidate.evaluation
 
-  priority_badge = "✦ <b>VIP</b> · " if candidate.priority else ""
+  priority_badge = "✦\ufe0e <b>VIP</b> · " if candidate.priority else ""
 
   score_threshold = settings.evaluating.score_threshold
-  if eval_data.score >= 80:
+  low_band = settings.evaluating.low_band
+  if eval_data.score >= score_threshold:
     score_dot = "🟢"
-  elif eval_data.score >= score_threshold:
+  elif eval_data.score >= low_band:
     score_dot = "🟡"
   else:
     score_dot = "🟠"
@@ -82,8 +88,8 @@ def send_single_telegram_message(candidate: EvaluatedCandidate) -> bool:
 <b>{clean_html(candidate.title)}</b>
 {priority_badge}{score_dot} <code>{eval_data.score}/100</code>
 
-▪︎ <b>Company:</b> {clean_html(candidate.company)}
-▪︎ <b>Location:</b> {clean_html(candidate.location) or "Remote"}
+• <b>Company:</b> {clean_html(candidate.company)}
+• <b>Location:</b> {clean_html(candidate.location) or "Remote"}
 
 <blockquote expandable><b>Reasoning</b>
 {clean_html(eval_data.reasoning)}</blockquote>
@@ -91,7 +97,7 @@ def send_single_telegram_message(candidate: EvaluatedCandidate) -> bool:
 <blockquote expandable><b>Score Breakdown</b>
 {clean_html(eval_data.score_explanation)}</blockquote>
 
-↗ <a href="{candidate.url}">View Job Posting</a>
+↗\ufe0e <a href="{candidate.url}">View Job Posting</a>
 """
 
   return _post_telegram(message)
@@ -134,14 +140,14 @@ def send_run_summary() -> None:
   skipped_total = m.skipped_seen + m.skipped_dupes + m.skipped_filters + m.cut_over_cap
   rejected_total = m.hard_failed + m.low_score
 
-  error_block = f"\n▪︎ <b>Error:</b> <code>{clean_html(status.error[:200])}</code>\n" if status.error else ""
+  error_block = f"\n• <b>Error:</b> <code>{clean_html(status.error[:200])}</code>\n" if status.error else ""
 
   message = f"""
 {header}
 {error_block}
-▪︎ <b>Fetched:</b> {m.new_candidates} new ({skipped_total} skipped)
-▪︎ <b>Evaluated:</b> {m.eval_passed} passed · {rejected_total} rejected
-▪︎ <b>Sent:</b> {m.sent_count} alerts
+• <b>Fetched:</b> {m.new_candidates} new ({skipped_total} skipped)
+• <b>Evaluated:</b> {m.eval_passed} passed · {rejected_total} rejected
+• <b>Sent:</b> {m.sent_count} alerts
 
 <blockquote expandable><b>Full Breakdown</b>
 Total scraped: {m.fetched_total} (seen: {m.skipped_seen}, dupes: {m.skipped_dupes}, filtered: {m.skipped_filters}, cap: {m.cut_over_cap})
@@ -214,7 +220,7 @@ def save_send_results(sent_candidates: list[EvaluatedCandidate]):
   filtered_candidates = [c for c in candidates if c.get("uid") not in all_evaluated_uids]
   write(DATA_PATH / "candidates.json", filtered_candidates)
 
-  failed_to_send = [e for e in all_evaluated if e.get("uid") not in sent_uids and not e.get("evaluation", {}).get("hard_fail", True)]
+  failed_to_send = [e for e in all_evaluated if e.get("uid") not in sent_uids and _is_sendable(e.get("evaluation", {}))]
   write(DATA_PATH / "evaluated.json", failed_to_send)
 
 
