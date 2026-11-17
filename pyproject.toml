@@ -41,7 +41,7 @@ packages = ["src/jobhunter"]
 
 # ruff formater settings
 [tool.ruff]
-line-length = 240
+line-length = 256
 indent-width = 2
 
 [tool.ruff.lint]

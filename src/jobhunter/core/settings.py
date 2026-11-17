@@ -46,8 +46,9 @@ class ScoringWeight(StrictModel):
 
 
 class EvaluatingConfig(StrictModel):
-  score_threshold: int = Field(default=65, ge=25, le=89)
-  low_band: int = 45
+  score_threshold: int = Field(default=75, ge=25, le=89)
+  low_band: int = 55
+  hard_gates: list[str] = Field(default_factory=list)
   scoring_weights: list[ScoringWeight] = Field(default_factory=list)
 
   @model_validator(mode="after")

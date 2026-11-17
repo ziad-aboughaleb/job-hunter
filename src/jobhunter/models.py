@@ -62,19 +62,31 @@ class Candidate(BaseModel):
 class EvaluationResult(BaseModel):
   """The exact JSON schema the LLM must return."""
 
-  reasoning: str = Field(description="A brief 2-3 sentence thought process analyzing the match before scoring.")
+  reasoning: str = Field(description=("A brief 2-3 sentence thought process analyzing eligibility and match before scoring."))
   hard_fail: bool = Field(description="True if the job hits any hard gate or dealbreaker.")
-  hard_fail_reason: str = Field(default="", description="If hard_fail is true, a max 12-word explanation. Otherwise empty.")
-  strengths: list[str] = Field(description="2-3 short items showing requirements explicitly met by the CV.")
-  gaps: list[str] = Field(default_factory=list, description="Missing requirements or weak points compared to the CV.")
-  score: int = Field(ge=0, le=100, description="Final match score (0-100) based on the rubric.")
-  score_explanation: str = Field(description="A 1-2 sentence explanation of exactly why the job passed or failed the score threshold.")
+  hard_fail_reason: str = Field(
+    default="",
+    description=("If hard_fail is true, a max 12-word explanation. Otherwise empty."),
+  )
+  strengths: list[str] = Field(
+    default_factory=list,
+    description=("2-3 short items showing requirements explicitly met by the CV."),
+  )
+  gaps: list[str] = Field(
+    default_factory=list,
+    description="Missing requirements or weak points compared to the CV.",
+  )
+  score: int = Field(
+    ge=0,
+    le=100,
+    description="Final match score (0-100) based on the configured weights.",
+  )
+  score_explanation: str = Field(description=("A 1-2 sentence explanation of why the job passed or failed the threshold."))
 
   @model_validator(mode="after")
   def enforce_hard_fail_rules(self) -> EvaluationResult:
     if self.hard_fail:
       self.score = 0
-      self.strengths = []
     else:
       self.hard_fail_reason = ""
     return self

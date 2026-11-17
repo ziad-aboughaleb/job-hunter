@@ -51,22 +51,34 @@
     "max_age_days": 14
   },
   "evaluating": {
-    "score_threshold": 65,
+    "score_threshold": 75,
+    "hard_gates": [
+      "The posting restricts applicants to a country, region, or time zone outside the candidate's preferences (check both location metadata and description).",
+      "The work arrangement (remote, hybrid, on-site) or contract type violates the candidate's preferences.",
+      "The seniority level exceeds the candidate's preferences (a 1-2 year stretch is acceptable only when the core tech stack matches closely).",
+      "The primary focus of the role does not align with {target_roles}.",
+      "The job description explicitly mentions a dealbreaker or non-accepted working language listed in the preferences."
+    ],
     "scoring_weights": [
       {
-        "name": "tech_stack_match",
-        "weight": 40,
-        "what": "How well the job's tech stack matches the candidate's CV."
+        "name": "Core skills overlap",
+        "weight": 50,
+        "what": "Direct overlap between required core technologies and skills demonstrated in the CV; do not award high marks for shared secondary tools if the primary stack is mismatched."
       },
       {
-        "name": "experience_level",
-        "weight": 30,
-        "what": "Does the required experience match the candidate's years of experience?"
+        "name": "Experience and seniority fit",
+        "weight": 20,
+        "what": "Alignment of required years of experience and career stage with the CV and preferences."
       },
       {
-        "name": "role_alignment",
-        "weight": 30,
-        "what": "Is this a backend-focused engineering role?"
+        "name": "Role and domain fit",
+        "weight": 20,
+        "what": "Title alignment with target backend/software roles and relevance of CV projects to the role's problem space."
+      },
+      {
+        "name": "Nice-to-haves",
+        "weight": 10,
+        "what": "Secondary tools, cloud/CI workflows, testing experience, and soft skills."
       }
     ]
   },
