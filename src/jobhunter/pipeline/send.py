@@ -2,7 +2,6 @@ import logging
 import time
 
 import httpx
-
 from jobhunter.core.logger import console
 from jobhunter.core.paths import DATA_PATH, read, write
 from jobhunter.core.settings import settings
@@ -88,8 +87,8 @@ def send_single_telegram_message(candidate: EvaluatedCandidate) -> bool:
 <b>{clean_html(candidate.title)}</b>
 {priority_badge}{score_dot} <code>{eval_data.score}/100</code>
 
-• <b>Company:</b> {clean_html(candidate.company)}
-• <b>Location:</b> {clean_html(candidate.location) or "Remote"}
+- <b>Company:</b> {clean_html(candidate.company)}
+- <b>Location:</b> {clean_html(candidate.location) or "Remote"}
 
 <blockquote expandable><b>Reasoning</b>
 {clean_html(eval_data.reasoning)}</blockquote>
@@ -138,16 +137,21 @@ def send_run_summary() -> None:
     header = f"🟢 <b>Pipeline Summary</b> · <code>{duration_str}</code>"
 
   skipped_total = m.skipped_seen + m.skipped_dupes + m.skipped_filters + m.cut_over_cap
-  rejected_total = m.hard_failed + m.low_score
+  if settings.telegram.send_low_scores:
+    passed_total = m.eval_passed + m.low_score
+    rejected_total = m.hard_failed
+  else:
+    passed_total = m.eval_passed
+    rejected_total = m.hard_failed + m.low_score
 
-  error_block = f"\n• <b>Error:</b> <code>{clean_html(status.error[:200])}</code>\n" if status.error else ""
+  error_block = f"\n- <b>Error:</b> <code>{clean_html(status.error[:200])}</code>\n" if status.error else ""
 
   message = f"""
 {header}
 {error_block}
-• <b>Fetched:</b> {m.new_candidates} new ({skipped_total} skipped)
-• <b>Evaluated:</b> {m.eval_passed} passed · {rejected_total} rejected
-• <b>Sent:</b> {m.sent_count} alerts
+- <b>Fetched:</b> {m.new_candidates} new ({skipped_total} skipped)
+- <b>Evaluated:</b> {passed_total} passed · {rejected_total} rejected
+- <b>Sent:</b> {m.sent_count} alerts
 
 <blockquote expandable><b>Full Breakdown</b>
 Total scraped: {m.fetched_total} (seen: {m.skipped_seen}, dupes: {m.skipped_dupes}, filtered: {m.skipped_filters}, cap: {m.cut_over_cap})
